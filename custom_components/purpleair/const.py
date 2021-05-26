@@ -19,8 +19,8 @@ DOMAIN = "purpleair"
 
 JSON_PROPERTIES = ['pm1_0_atm', 'pm2_5_atm', 'pm10_0_atm']
 
-SCAN_INTERVAL = 300
+PRIVATE_URL = "https://www.purpleair.com/json?show={nodes}&key={key}"
 
 PUBLIC_URL = "https://www.purpleair.com/json?show={nodes}"
 
-PRIVATE_URL = "https://www.purpleair.com/json?show={nodes}&key={key}"
+SCAN_INTERVAL = 300

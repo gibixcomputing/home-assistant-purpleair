@@ -29,7 +29,7 @@ async def validate_input(hass: core.HomeAssistant, data):
 
     node = json['results'][0]
     node_id = str(node['ID'])
-    if ('ParentID' in node):
+    if 'ParentID' in node:
         node_id = str(node['ParentID'])
 
     config = {
@@ -51,6 +51,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     CONNECTION_CLASS = config_entries.CONN_CLASS_CLOUD_POLL
 
     async def async_step_user(self, user_input=None):
+        """Handle setup user flow."""
+
         errors = {}
         if user_input is not None:
             try:
