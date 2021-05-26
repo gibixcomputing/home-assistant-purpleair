@@ -7,7 +7,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN
-from .PurpleAirApi import PurpleAirApi
+from .purple_air_api import PurpleAirApi
 
 PLATFORMS = ["air_quality", "sensor"]
 
