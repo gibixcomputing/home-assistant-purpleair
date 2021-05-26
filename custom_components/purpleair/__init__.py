@@ -1,9 +1,6 @@
 """The PurpleAir integration."""
 import asyncio
-from datetime import timedelta
 import logging
-
-import voluptuous as vol
 
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.config_entries import ConfigEntry

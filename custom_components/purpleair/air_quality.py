@@ -1,10 +1,7 @@
 """ The Purple Air air_quality platform. """
-import asyncio
 import logging
 
 from homeassistant.components.air_quality import AirQualityEntity
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
 from .const import DISPATCHER_PURPLE_AIR, DOMAIN
@@ -86,7 +83,6 @@ class PurpleAirQuality(AirQualityEntity):
             DISPATCHER_PURPLE_AIR,
             self.async_write_ha_state
         )
-
 
     async def async_will_remove_from_hass(self):
         _LOGGER.debug('unregistering node_id: %s', self._node_id)

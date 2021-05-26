@@ -5,7 +5,11 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_track_time_interval, async_track_point_in_utc_time
 from homeassistant.util import dt
 
-from .const import AQI_BREAKPOINTS, DISPATCHER_PURPLE_AIR, JSON_PROPERTIES, SCAN_INTERVAL, PUBLIC_URL, PRIVATE_URL
+from .const import (
+    AQI_BREAKPOINTS, DISPATCHER_PURPLE_AIR,
+    JSON_PROPERTIES, SCAN_INTERVAL,
+    PUBLIC_URL, PRIVATE_URL
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -15,8 +19,8 @@ def calc_aqi(value, index):
         _LOGGER.debug('calc_aqi requested for unknown type: %s', index)
         return None
 
-    bp = next((bp for bp in AQI_BREAKPOINTS[index] if value >= bp['pm_low'] and value <=
-              bp['pm_high']), None)
+    bp = next((bp for bp in AQI_BREAKPOINTS[index] if value >= bp['pm_low'] and value
+              <= bp['pm_high']), None)
     if not bp:
         _LOGGER.debug('value %s did not fall in valid range for type %s', value, index)
         return None
@@ -24,7 +28,7 @@ def calc_aqi(value, index):
     aqi_range = bp['aqi_high'] - bp['aqi_low']
     pm_range = bp['pm_high'] - bp['pm_low']
     c = value - bp['pm_low']
-    return round((aqi_range/pm_range) * c + bp['aqi_low'])
+    return round((aqi_range / pm_range) * c + bp['aqi_low'])
 
 
 class PurpleAirApi:
@@ -55,7 +59,7 @@ class PurpleAirApi:
             _LOGGER.debug('detected duplicate registration: %s', node_id)
             return
 
-        self._nodes[node_id] = { 'hidden': hidden, 'key': key }
+        self._nodes[node_id] = {'hidden': hidden, 'key': key}
         _LOGGER.debug('registered new node: %s', node_id)
 
         if not self._shutdown_interval:
@@ -85,10 +89,8 @@ class PurpleAirApi:
             self._shutdown_interval()
             self._shutdown_interval = None
 
-
-    async def _fetch_data(self, public_nodes, private_nodes):
+    def _build_private_urls(self, public_nodes, private_nodes):
         urls = []
-
         if private_nodes:
             by_keys = {}
             for node in private_nodes:
@@ -111,9 +113,14 @@ class PurpleAirApi:
                 urls.append(PRIVATE_URL.format(nodes='|'.join(nodes), key=key))
 
         elif public_nodes:
-            urls.append(PUBLIC_URL.format(nodes='|'.join(public_nodes)))
+            urls = [PUBLIC_URL.format(nodes='|'.join(public_nodes))]
 
-        else:
+        return urls
+
+    async def _fetch_data(self, public_nodes, private_nodes):
+        urls = self._build_private_urls(public_nodes, private_nodes)
+
+        if not urls:
             _LOGGER.debug('no nodes provided')
             return []
 
@@ -132,7 +139,6 @@ class PurpleAirApi:
 
         return results
 
-
     async def _update(self, now=None):
         public_nodes = [node_id for node_id in self._nodes if not self._nodes[node_id]['hidden']]
         private_nodes = [node_id for node_id in self._nodes if self._nodes[node_id]['hidden']]
@@ -141,29 +147,7 @@ class PurpleAirApi:
 
         results = await self._fetch_data(public_nodes, private_nodes)
 
-        nodes = {}
-        for result in results:
-            node_id = str(result['ID'] if 'ParentID' not in result else result['ParentID'])
-            if 'ParentID' not in result:
-                nodes[node_id] = {
-                    'last_seen': result['LastSeen'],
-                    'last_update': result['LastUpdateCheck'],
-                    'device_location': result['DEVICE_LOCATIONTYPE'] if 'DEVICE_LOCATIONTYPE'
-                        in result else 'unknown',
-                    'readings': {},
-                }
-
-            sensor = 'A' if 'ParentID' not in result else 'B'
-            readings = nodes[node_id]['readings']
-
-            sensor_data = readings[sensor] if sensor in readings else {}
-            for prop in JSON_PROPERTIES:
-                sensor_data[prop] = result[prop] if prop in result else None
-
-            if not all(value is None for value in sensor_data.values()):
-                readings[sensor] = sensor_data
-            else:
-                _LOGGER.debug('node %s did not contain any data', node_id)
+        nodes = build_nodes(results)
 
         for node in nodes:
             readings = nodes[node]['readings']
@@ -175,7 +159,9 @@ class PurpleAirApi:
                         a = float(readings['A'][prop])
                         b = float(readings['B'][prop])
                         readings[prop] = round((a + b) / 2, 1)
-                        readings[f'{prop}_confidence'] = 'Good' if abs(a - b) < 45 else 'Questionable'
+
+                        confidence = 'Good' if abs(a - b) < 45 else 'Questionable'
+                        readings[f'{prop}_confidence'] = confidence
                     else:
                         readings[prop] = None
             else:
@@ -194,3 +180,35 @@ class PurpleAirApi:
 
         self._data = nodes
         async_dispatcher_send(self._hass, DISPATCHER_PURPLE_AIR)
+
+
+def build_nodes(results):
+    nodes = {}
+    for result in results:
+        sensor = 'A' if 'ParentID' not in result else 'B'
+        node_id = str(result['ID'])
+
+        if sensor == 'A':
+            nodes[node_id] = {
+                'last_seen': result['LastSeen'],
+                'last_update': result['LastUpdateCheck'],
+                'device_location':
+                result['DEVICE_LOCATIONTYPE'] if 'DEVICE_LOCATIONTYPE'
+                in result else 'unknown',
+                'readings': {},
+            }
+        else:
+            node_id = str(result['ParentID'])
+
+        readings = nodes[node_id]['readings']
+
+        sensor_data = readings[sensor] if sensor in readings else {}
+        for prop in JSON_PROPERTIES:
+            sensor_data[prop] = result[prop] if prop in result else None
+
+        if not all(value is None for value in sensor_data.values()):
+            readings[sensor] = sensor_data
+        else:
+            _LOGGER.debug('node %s:%s did not contain any data', node_id, sensor)
+
+    return nodes
