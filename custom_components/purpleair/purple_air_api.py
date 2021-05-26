@@ -18,39 +18,14 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
-def calc_aqi(value, index):
-    """
-    Calculates the corresponding air quality index based off the available conversion data using
-    the sensors current Particulate Matter 2.5 value.
-
-    Returns an AQI between 0 and 999 or None if the sensor reading is invalid.
-
-    See AQI_BREAKPOINTS in const.py.
-    """
-
-    if index not in AQI_BREAKPOINTS:
-        _LOGGER.debug('calc_aqi requested for unknown type: %s', index)
-        return None
-
-    aqi_bp_index = AQI_BREAKPOINTS[index]
-    aqi_bp = next((bp for bp in aqi_bp_index if bp['pm_low'] <= value <= bp['pm_high']), None)
-
-    if not aqi_bp:
-        _LOGGER.debug('value %s did not fall in valid range for type %s', value, index)
-        return None
-
-    aqi_range = aqi_bp['aqi_high'] - aqi_bp['aqi_low']
-    pm_range = aqi_bp['pm_high'] - aqi_bp['pm_low']
-    aqi_c = value - aqi_bp['pm_low']
-    return round((aqi_range / pm_range) * aqi_c + aqi_bp['aqi_low'])
-
-
 class PurpleAirApi:
     """Provides the API capable of communicating with PurpleAir."""
 
     def __init__(self, hass, session):
         self._hass = hass
         self._session = session
+
+        self._api_issues = False
         self._nodes = {}
         self._data = {}
         self._scan_interval = timedelta(seconds=SCAN_INTERVAL)
@@ -169,7 +144,19 @@ class PurpleAirApi:
 
             async with self._session.get(url) as response:
                 if response.status != 200:
-                    _LOGGER.warning('bad API response for %s: %s', url, response.status)
+                    if not self._api_issues:
+                        self._api_issues = True
+                        _LOGGER.warning(
+                            'PurpleAir API returned bad response (%s) for url %s',
+                            response.status,
+                            url
+                        )
+
+                    continue
+
+                if self._api_issues:
+                    self._api_issues = False
+                    _LOGGER.info('PurpleAir API responding normally')
 
                 json = await response.json()
                 results += json['results']
@@ -230,6 +217,33 @@ def build_nodes(results):
             _LOGGER.debug('node %s:%s did not contain any data', node_id, sensor)
 
     return nodes
+
+
+def calc_aqi(value, index):
+    """
+    Calculates the corresponding air quality index based off the available conversion data using
+    the sensors current Particulate Matter 2.5 value.
+
+    Returns an AQI between 0 and 999 or None if the sensor reading is invalid.
+
+    See AQI_BREAKPOINTS in const.py.
+    """
+
+    if index not in AQI_BREAKPOINTS:
+        _LOGGER.debug('calc_aqi requested for unknown type: %s', index)
+        return None
+
+    aqi_bp_index = AQI_BREAKPOINTS[index]
+    aqi_bp = next((bp for bp in aqi_bp_index if bp['pm_low'] <= value <= bp['pm_high']), None)
+
+    if not aqi_bp:
+        _LOGGER.debug('value %s did not fall in valid range for type %s', value, index)
+        return None
+
+    aqi_range = aqi_bp['aqi_high'] - aqi_bp['aqi_low']
+    pm_range = aqi_bp['pm_high'] - aqi_bp['pm_low']
+    aqi_c = value - aqi_bp['pm_low']
+    return round((aqi_range / pm_range) * aqi_c + aqi_bp['aqi_low'])
 
 
 def calculate_sensor_values(nodes):
