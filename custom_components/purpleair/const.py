@@ -1,4 +1,13 @@
 """Constants for the Purple Air integration."""
+from __future__ import annotations
+from typing import Final
+
+from homeassistant.components.sensor import STATE_CLASS_MEASUREMENT
+from homeassistant.const import (
+    CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
+)
+
+from .model import PurpleAirSensorEntityDescription
 
 AQI_BREAKPOINTS = {
     'pm2_5': [
@@ -15,12 +24,31 @@ AQI_BREAKPOINTS = {
 
 DISPATCHER_PURPLE_AIR = 'dispatcher_purple_air'
 
-DOMAIN = "purpleair"
+DOMAIN = 'purpleair'
 
 JSON_PROPERTIES = ['pm1_0_atm', 'pm2_5_atm', 'pm10_0_atm']
 
-PRIVATE_URL = "https://www.purpleair.com/json?show={nodes}&key={key}"
+PRIVATE_URL = 'https://www.purpleair.com/json?show={nodes}&key={key}'
 
-PUBLIC_URL = "https://www.purpleair.com/json?show={nodes}"
+PUBLIC_URL = 'https://www.purpleair.com/json?show={nodes}'
 
 SCAN_INTERVAL = 300
+
+SENSOR_TYPES: tuple[PurpleAirSensorEntityDescription, ...] = (
+#    PurpleAirSensorEntityDescription(
+#        key='PM25',
+#        icon='mdi:blur',
+#        name='PM2.5',
+#        native_unit_of_measurement=CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
+#        state_class=STATE_CLASS_MEASUREMENT,
+#        unique_id_suffix='pm25',
+#    ),
+    PurpleAirSensorEntityDescription(
+        key='pm2_5_atm_aqi',
+        icon='mdi:weather-hazy',
+        name='Air Quality Index',
+        native_unit_of_measurement='AQI',
+        state_class=STATE_CLASS_MEASUREMENT,
+        unique_id_suffix='air_quality_index',
+    ),
+)
