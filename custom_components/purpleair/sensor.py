@@ -13,7 +13,10 @@ from .const import (
     SENSOR_TYPES,
 )
 
-from .model import PurpleAirSensorEntityDescription
+from .model import (
+    PurpleAirConfigEntry,
+    PurpleAirSensorEntityDescription,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,12 +28,14 @@ async def async_setup_entry(
 ):
     """Creates custom air quality index sensors for Home Assistant."""
 
-    _LOGGER.debug('registring aqi sensor with data: %s', config_entry.data)
+    config = PurpleAirConfigEntry(**config_entry.data)
+
+    _LOGGER.debug('registring aqi sensor with data: %s', config)
 
     sensors = []
 
     for description in SENSOR_TYPES:
-        sensors.append(PurpleAirSensor(hass, config_entry, description))
+        sensors.append(PurpleAirSensor(hass, config, description))
 
     async_schedule_add_entities(sensors)
 
@@ -46,16 +51,14 @@ class PurpleAirSensor(Entity):
     def __init__(
         self,
         hass: HomeAssistant,
-        config_entry: ConfigEntry,
+        config: PurpleAirConfigEntry,
         description: PurpleAirSensorEntityDescription
     ):
-        data = config_entry.data
-
         self._hass = hass
-        self._node_id = data['node_id']
-        self._title = data['title']
-        self._key = data['key'] if 'key' in data else None
-        self._hidden = data['hidden'] if 'hidden' in data else False
+        self._node_id = config.node_id
+        self._title = config.title
+        self._key = config.key
+        self._hidden = config.hidden
 
         self._api = hass.data[DOMAIN]
         self._stop_listening = None
