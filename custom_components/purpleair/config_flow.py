@@ -34,7 +34,7 @@ async def validate_input(hass: core.HomeAssistant, data):
 
     config = {
         'title': node['Label'],
-        'id': node_id,
+        'node_id': node_id,
         'hidden': node['Hidden'] == 'true',
         'key': node['THINGSPEAK_PRIMARY_ID_READ_KEY'],
     }
@@ -47,7 +47,7 @@ async def validate_input(hass: core.HomeAssistant, data):
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for PurpleAir."""
 
-    VERSION = 1
+    VERSION = 2
     CONNECTION_CLASS = config_entries.CONN_CLASS_CLOUD_POLL
 
     async def async_step_user(self, user_input=None):

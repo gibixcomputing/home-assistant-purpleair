@@ -15,6 +15,24 @@ PLATFORMS = ["sensor"]
 _LOGGER = logging.getLogger(__name__)
 
 
+async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
+    """Migrate configuration entry."""
+    _LOGGER.debug('Migrating from version %s', config_entry.version)
+
+    if config_entry.version == 1:
+        data = {**config_entry.data}
+
+        data['node_id'] = data['id']
+        del data['id']
+
+        config_entry.data = {**data}
+
+        config_entry.version = 2
+
+    _LOGGER.debug('Migration to version %s successful', config_entry.version)
+    return True
+
+
 async def async_setup(hass: HomeAssistant, config: dict):
     """Set up the PurpleAir component."""
     session = async_get_clientsession(hass)

@@ -52,7 +52,7 @@ class PurpleAirSensor(Entity):
         data = config_entry.data
 
         self._hass = hass
-        self._node_id = data['id']
+        self._node_id = data['node_id']
         self._title = data['title']
         self._key = data['key'] if 'key' in data else None
         self._hidden = data['hidden'] if 'hidden' in data else False
