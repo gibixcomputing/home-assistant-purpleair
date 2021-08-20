@@ -13,6 +13,8 @@ from .const import DOMAIN, SCAN_INTERVAL
 from .model import PurpleAirConfigEntry
 from .purple_air_api import PurpleAirApi
 
+PARALLEL_UPDATES = 1
+
 PLATFORMS = ["sensor"]
 
 _LOGGER = logging.getLogger(__name__)
@@ -103,3 +105,7 @@ async def async_remove_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 
     api = hass.data[DOMAIN]['api']
     api.unregister_node(config.node_id)
+
+    coordinator = hass.data[DOMAIN]['coordinator']
+    if config.node_id in coordinator.data:
+        del coordinator.data[config.node_id]

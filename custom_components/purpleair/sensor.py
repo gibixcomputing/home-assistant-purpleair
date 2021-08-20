@@ -20,6 +20,8 @@ from .model import (
     PurpleAirSensorEntityDescription,
 )
 
+PARALLEL_UPDATES = 1
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -80,11 +82,17 @@ async def async_setup_entry(
 
     # check for the number of registered nodes during startup to only request an update
     # once all expected nodes are registered.
-    if not expected_entries or api.get_node_count() == expected_entries:
+    if (
+        (
+            not expected_entries  # expected_entries will be 0/None if this is the first one
+            or api.get_node_count() == expected_entries  # safety for not spamming at startup
+        )
+        and not coordinator.data.get(config.node_id)  # skips refresh if enabling extra sensors
+    ):
         await coordinator.async_config_entry_first_refresh()
         hass.data[DOMAIN]['expected_entries'] = None
 
-    async_schedule_add_entities(sensors, not expected_entries)
+    async_schedule_add_entities(sensors, False)
 
 
 class PurpleAirSensor(CoordinatorEntity):
@@ -130,10 +138,10 @@ class PurpleAirSensor(CoordinatorEntity):
         now = dt.utcnow()
         diff = now - node['last_update']
 
-        if diff.seconds > 3600:
-            if not self._warn_stale:
+        if diff.seconds > 5400:
+            if self.entity_description.primary and not self._warn_stale:
                 _LOGGER.warning(
-                    'PurpleAir Sensor "%s" (%s) has not sent data over an hour. Last update was %s',
+                    'PurpleAir Sensor "%s" (%s) has not sent data over 90 mins. Last update was %s',
                     self.config.title,
                     self.node_id,
                     dt.as_local(node['last_update'])
@@ -167,7 +175,7 @@ class PurpleAirSensor(CoordinatorEntity):
             return None
 
         attrs = {
-            'last_seen': dt.get_age(node['last_seen']),
+            'last_seen': dt.as_local(node['last_seen']),
             'last_update': dt.as_local(node['last_update']),
             'device_location': node['device_location'],
             'adc': node['adc'],
@@ -186,7 +194,6 @@ class PurpleAirSensor(CoordinatorEntity):
         """Returns the calculated AQI of the sensor as the current state."""
 
         node = self.coordinator.data.get(self.node_id)
-        _LOGGER.debug('coordinator node (%s) data: %s', self.node_id, node)
         if not node:
             return None
 

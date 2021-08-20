@@ -223,13 +223,18 @@ def calculate_sensor_values(nodes):
 
         if 'A' in readings and 'B' in readings:
             for prop in JSON_PROPERTIES:
-                if prop in readings['A'] and prop in readings['B']:
-                    a_reading = float(readings['A'][prop])
-                    b_reading = float(readings['B'][prop])
-                    readings[prop] = round((a_reading + b_reading) / 2, 1)
+                if a_reading := readings['A'].get(prop):
+                    a_reading = float(a_reading)
 
-                    confidence = 'Good' if abs(a_reading - b_reading) < 45 else 'Questionable'
-                    readings[f'{prop}_confidence'] = confidence
+                    if b_reading := readings['B'].get(prop):
+                        b_reading = float(b_reading)
+                        readings[prop] = round((a_reading + b_reading) / 2, 1)
+
+                        confidence = 'Good' if abs(a_reading - b_reading) < 45 else 'Questionable'
+                        readings[f'{prop}_confidence'] = confidence
+                    else:
+                        readings[prop] = round(a_reading, 1)
+                        readings[f'{prop}_confidence'] = 'Single'
                 else:
                     readings[prop] = None
         else:
