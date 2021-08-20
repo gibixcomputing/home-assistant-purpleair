@@ -52,6 +52,10 @@ async def async_setup_entry(
             _LOGGER.debug('updating device info for node %s', config.node_id)
 
             device = dev_registry.async_get_device({(DOMAIN, config.node_id)})
+            if not device:
+                # device has not been registered yet, wait for next update.
+                return
+
             _LOGGER.debug('device %s', device)
             dev_registry.async_update_device(
                 device.id,
@@ -120,9 +124,7 @@ class PurpleAirSensor(CoordinatorEntity):
         """Gets whether the sensor is available."""
 
         node = self.coordinator.data.get(self.node_id)
-        available = super().available and node
-
-        if not available:
+        if not node:
             return False
 
         now = dt.utcnow()

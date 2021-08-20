@@ -40,7 +40,7 @@ async def async_setup(hass: HomeAssistant, config: dict):
     """Set up the PurpleAir component."""
     session = async_get_clientsession(hass)
 
-    api = PurpleAirApi(hass, session)
+    api = PurpleAirApi(session)
     coordinator = DataUpdateCoordinator(
         hass,
         _LOGGER,

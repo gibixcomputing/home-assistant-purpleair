@@ -18,8 +18,7 @@ _LOGGER = logging.getLogger(__name__)
 class PurpleAirApi:
     """Provides the API capable of communicating with PurpleAir."""
 
-    def __init__(self, hass, session):
-        self._hass = hass
+    def __init__(self, session):
         self._session = session
 
         self._api_issues = False
@@ -112,22 +111,22 @@ class PurpleAirApi:
             _LOGGER.debug('no nodes provided')
             return []
 
-        delay_request = False
         results = []
         for url in urls:
             _LOGGER.debug('fetching url: %s', url)
 
-            if delay_request:
-                await asyncio.sleep(0.2)
+            # be nice to the free API when fetching multiple URLs
+            await asyncio.sleep(0.5)
 
             async with self._session.get(url) as response:
                 if response.status != 200:
                     if not self._api_issues:
                         self._api_issues = True
                         _LOGGER.warning(
-                            'PurpleAir API returned bad response (%s) for url %s',
+                            'PurpleAir API returned bad response (%s) for url %s. %s',
                             response.status,
-                            url
+                            url,
+                            await response.text()
                         )
 
                     continue
@@ -138,8 +137,6 @@ class PurpleAirApi:
 
                 json = await response.json()
                 results += json['results']
-
-            delay_request = True
 
         return results
 
