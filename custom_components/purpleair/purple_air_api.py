@@ -2,16 +2,13 @@
 Provides an API capable of communicating with the free PurpleAir service.
 """
 
-from datetime import timedelta
+import asyncio
 import logging
-
-from homeassistant.helpers.dispatcher import async_dispatcher_send
-from homeassistant.helpers.event import async_track_time_interval, async_track_point_in_utc_time
-from homeassistant.util import dt
+from datetime import datetime, timezone
 
 from .const import (
-    AQI_BREAKPOINTS, DISPATCHER_PURPLE_AIR,
-    JSON_PROPERTIES, SCAN_INTERVAL,
+    AQI_BREAKPOINTS,
+    JSON_PROPERTIES,
     PUBLIC_URL, PRIVATE_URL
 )
 
@@ -27,31 +24,10 @@ class PurpleAirApi:
 
         self._api_issues = False
         self._nodes = {}
-        self._data = {}
-        self._scan_interval = timedelta(seconds=SCAN_INTERVAL)
-        self._shutdown_interval = None
 
-    def is_node_registered(self, node_id):
-        """
-        Returns a value indicating whether the provided node is already registered with this
-        instance.
-        """
-        return node_id in self._data
-
-    def get_property(self, node_id, prop):
-        """Gets the property value of a sensor based on the node id."""
-
-        if node_id not in self._data:
-            return None
-
-        node = self._data[node_id]
-        return node[prop]
-
-    def get_reading(self, node_id, prop):
-        """Gets the last recorded reading of a sensor based on the node id."""
-
-        readings = self.get_property(node_id, 'readings')
-        return readings[prop] if prop in readings else None
+    def get_node_count(self):
+        """Gets the number of nodes registered with the API."""
+        return len(self._nodes)
 
     def register_node(self, node_id, hidden, key):
         """
@@ -66,20 +42,6 @@ class PurpleAirApi:
         self._nodes[node_id] = {'hidden': hidden, 'key': key}
         _LOGGER.debug('registered new node: %s', node_id)
 
-        if not self._shutdown_interval:
-            _LOGGER.debug('starting background poll: %s', self._scan_interval)
-            self._shutdown_interval = async_track_time_interval(
-                self._hass,
-                self._update,
-                self._scan_interval
-            )
-
-            async_track_point_in_utc_time(
-                self._hass,
-                self._update,
-                dt.utcnow() + timedelta(seconds=5)
-            )
-
     def unregister_node(self, node_id):
         """
         Unregisters a node from this instance and removes any associated data. If this is the last
@@ -93,10 +55,22 @@ class PurpleAirApi:
         del self._nodes[node_id]
         _LOGGER.debug('unregistered node: %s', node_id)
 
-        if not self._nodes and self._shutdown_interval:
-            _LOGGER.debug('no more nodes, shutting down interval')
-            self._shutdown_interval()
-            self._shutdown_interval = None
+    async def update(self, now=None):
+        """Main update process to query and update sensor data."""
+
+        public_nodes = [node_id for node_id in self._nodes if not self._nodes[node_id]['hidden']]
+        private_nodes = [node_id for node_id in self._nodes if self._nodes[node_id]['hidden']]
+
+        _LOGGER.debug('public nodes: %s, private nodes: %s', public_nodes, private_nodes)
+
+        urls = self._build_api_urls(public_nodes, private_nodes)
+        results = await self._fetch_data(urls)
+
+        nodes = build_nodes(results)
+
+        calculate_sensor_values(nodes)
+
+        return nodes
 
     def _build_api_urls(self, public_nodes, private_nodes):
         """
@@ -138,9 +112,13 @@ class PurpleAirApi:
             _LOGGER.debug('no nodes provided')
             return []
 
+        delay_request = False
         results = []
         for url in urls:
             _LOGGER.debug('fetching url: %s', url)
+
+            if delay_request:
+                await asyncio.sleep(0.2)
 
             async with self._session.get(url) as response:
                 if response.status != 200:
@@ -161,25 +139,9 @@ class PurpleAirApi:
                 json = await response.json()
                 results += json['results']
 
+            delay_request = True
+
         return results
-
-    async def _update(self, now=None):
-        """Main update process to query and update sensor data."""
-
-        public_nodes = [node_id for node_id in self._nodes if not self._nodes[node_id]['hidden']]
-        private_nodes = [node_id for node_id in self._nodes if self._nodes[node_id]['hidden']]
-
-        _LOGGER.debug('public nodes: %s, private nodes: %s', public_nodes, private_nodes)
-
-        urls = self._build_api_urls(public_nodes, private_nodes)
-        results = await self._fetch_data(urls)
-
-        nodes = build_nodes(results)
-
-        calculate_sensor_values(nodes)
-
-        self._data = nodes
-        async_dispatcher_send(self._hass, DISPATCHER_PURPLE_AIR)
 
 
 def build_nodes(results):
@@ -195,12 +157,18 @@ def build_nodes(results):
 
         if sensor == 'A':
             nodes[node_id] = {
-                'last_seen': result['LastSeen'],
-                'last_update': result['LastUpdateCheck'],
-                'device_location':
-                result['DEVICE_LOCATIONTYPE'] if 'DEVICE_LOCATIONTYPE'
-                in result else 'unknown',
+                'last_seen': datetime.fromtimestamp(result['LastSeen'], timezone.utc),
+                'last_update': datetime.fromtimestamp(result['LastUpdateCheck'], timezone.utc),
+                'device_location': result.get('DEVICE_LOCATIONTYPE', 'unknown'),
                 'readings': {},
+                'version': result.get('Version', 'unknown'),
+                'type': result.get('Type', 'unknown'),
+                'label': result.get('Label'),
+                'lat': float(result.get('Lat', 0)),
+                'lon': float(result.get('Lon', 0)),
+                'rssi': float(result.get('RSSI', 0)),
+                'adc': float(result.get('Adc', 0)),
+                'uptime': int(result.get('Uptime', 0)),
             }
         else:
             node_id = str(result['ParentID'])
@@ -276,7 +244,7 @@ def calculate_sensor_values(nodes):
                 else:
                     readings[prop] = None
 
-        _LOGGER.debug('node results %s, readings: %s', node, readings)
+        if pm25atm := readings.get('pm2_5_atm'):
+            readings['pm2_5_atm_aqi'] = calc_aqi(pm25atm, 'pm2_5')
 
-        if 'pm2_5_atm' in readings and readings['pm2_5_atm']:
-            readings['pm2_5_atm_aqi'] = calc_aqi(readings['pm2_5_atm'], 'pm2_5')
+        _LOGGER.debug('node results %s, readings: %s', node, readings)

@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable
 
 from homeassistant.components.sensor import SensorEntityDescription
 
@@ -29,6 +28,7 @@ class PurpleAirConfigEntry:
 class PurpleAirSensorEntityDescription(SensorEntityDescription):
     """Class describing PurpleAir sensor entities."""
 
-    enable_default = False
-    value: Callable = round
+    device_class: str = None
+    enable_default: bool = False
+    primary: bool = False
     unique_id_suffix: str = ''

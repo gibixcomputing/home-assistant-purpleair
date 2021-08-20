@@ -1,4 +1,5 @@
 """The PurpleAir integration."""
+from datetime import timedelta
 import asyncio
 import logging
 
@@ -6,8 +7,10 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from .const import DOMAIN
+from .const import DOMAIN, SCAN_INTERVAL
+from .model import PurpleAirConfigEntry
 from .purple_air_api import PurpleAirApi
 
 PLATFORMS = ["sensor"]
@@ -37,7 +40,25 @@ async def async_setup(hass: HomeAssistant, config: dict):
     """Set up the PurpleAir component."""
     session = async_get_clientsession(hass)
 
-    hass.data[DOMAIN] = PurpleAirApi(hass, session)
+    api = PurpleAirApi(hass, session)
+    coordinator = DataUpdateCoordinator(
+        hass,
+        _LOGGER,
+        name='purpleair',
+        update_method=api.update,
+        update_interval=timedelta(seconds=SCAN_INTERVAL),
+    )
+
+    # prime the coordinator with initial data
+    coordinator.data = {}
+
+    entries = hass.config_entries.async_entries(DOMAIN)
+
+    hass.data[DOMAIN] = {
+        'api': api,
+        'coordinator': coordinator,
+        'expected_entries': len(entries),
+    }
 
     return True
 
@@ -72,3 +93,13 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     )
 
     return unload_ok
+
+
+async def async_remove_entry(hass: HomeAssistant, config_entry: ConfigEntry):
+    """Unregisters the node from the API when the entry is removed."""
+
+    config = PurpleAirConfigEntry(**config_entry.data)
+    _LOGGER.debug('unregistering entry %s from api', config.node_id)
+
+    api = hass.data[DOMAIN]['api']
+    api.unregister_node(config.node_id)

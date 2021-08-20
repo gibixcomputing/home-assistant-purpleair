@@ -22,17 +22,15 @@ AQI_BREAKPOINTS = {
     ],
 }
 
-DISPATCHER_PURPLE_AIR = 'dispatcher_purple_air'
+DOMAIN: Final = 'purpleair'
 
-DOMAIN = 'purpleair'
+JSON_PROPERTIES: Final = ['pm1_0_atm', 'pm2_5_atm', 'pm10_0_atm']
 
-JSON_PROPERTIES = ['pm1_0_atm', 'pm2_5_atm', 'pm10_0_atm']
+PRIVATE_URL: Final = 'https://www.purpleair.com/json?show={nodes}&key={key}'
 
-PRIVATE_URL = 'https://www.purpleair.com/json?show={nodes}&key={key}'
+PUBLIC_URL: Final = 'https://www.purpleair.com/json?show={nodes}'
 
-PUBLIC_URL = 'https://www.purpleair.com/json?show={nodes}'
-
-SCAN_INTERVAL = 300
+SCAN_INTERVAL: Final = 300
 
 SENSOR_TYPES: tuple[PurpleAirSensorEntityDescription, ...] = (
 #    PurpleAirSensorEntityDescription(
@@ -46,9 +44,11 @@ SENSOR_TYPES: tuple[PurpleAirSensorEntityDescription, ...] = (
     PurpleAirSensorEntityDescription(
         key='pm2_5_atm_aqi',
         icon='mdi:weather-hazy',
+        device_class='aqi',
         name='Air Quality Index',
-        native_unit_of_measurement='AQI',
         state_class=STATE_CLASS_MEASUREMENT,
         unique_id_suffix='air_quality_index',
+        enable_default=True,
+        primary=True,
     ),
 )
