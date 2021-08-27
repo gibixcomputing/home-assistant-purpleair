@@ -31,6 +31,10 @@ JSON_PROPERTIES: Final = [
     API_ATTR_PRESSURE
 ]
 
+MAX_PM_READING: Final = 1000
+
+PM_PROPERTIES: Final = [API_ATTR_PM1, API_ATTR_PM25, API_ATTR_PM10]
+
 PRIVATE_URL: Final = 'https://www.purpleair.com/json?show={nodes}&key={key}'
 
 PUBLIC_URL: Final = 'https://www.purpleair.com/json?show={nodes}'

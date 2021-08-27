@@ -5,15 +5,16 @@ Provides an API capable of communicating with the free PurpleAir service.
 import asyncio
 import logging
 import re
-from datetime import datetime, timezone
 
 from aiohttp import ClientSession
 
-from .const import (
-    AQI_BREAKPOINTS,
-    JSON_PROPERTIES,
-    PUBLIC_URL, PRIVATE_URL
+from .const import PRIVATE_URL, PUBLIC_URL
+from .exceptions import (
+    PurpleAirApiError,
+    PurpleAirApiStatusError,
+    PurpleAirApiUrlError,
 )
+from .util import build_nodes, calculate_sensor_values
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -146,117 +147,6 @@ class PurpleAirApi:
         return results
 
 
-def build_nodes(results):
-    """
-    Builds a dictionary of nodes and extracts available data from the JSON result array returned
-    from the PurpleAir API.
-    """
-
-    nodes = {}
-    for result in results:
-        sensor = 'A' if 'ParentID' not in result else 'B'
-        node_id = str(result['ID'])
-
-        if sensor == 'A':
-            nodes[node_id] = {
-                'last_seen': datetime.fromtimestamp(result['LastSeen'], timezone.utc),
-                'last_update': datetime.fromtimestamp(result['LastUpdateCheck'], timezone.utc),
-                'device_location': result.get('DEVICE_LOCATIONTYPE', 'unknown'),
-                'readings': {},
-                'version': result.get('Version', 'unknown'),
-                'type': result.get('Type', 'unknown'),
-                'label': result.get('Label'),
-                'lat': float(result.get('Lat', 0)),
-                'lon': float(result.get('Lon', 0)),
-                'rssi': float(result.get('RSSI', 0)),
-                'adc': float(result.get('Adc', 0)),
-                'uptime': int(result.get('Uptime', 0)),
-            }
-        else:
-            node_id = str(result['ParentID'])
-
-        readings = nodes[node_id]['readings']
-
-        sensor_data = readings.get(sensor, {})
-        for prop in JSON_PROPERTIES:
-            sensor_data[prop] = result.get(prop)
-
-        if not all(value is None for value in sensor_data.values()):
-            readings[sensor] = sensor_data
-        else:
-            _LOGGER.debug('node %s:%s did not contain any data', node_id, sensor)
-
-    return nodes
-
-
-def calc_aqi(value, index):
-    """
-    Calculates the corresponding air quality index based off the available conversion data using
-    the sensors current Particulate Matter 2.5 value.
-
-    Returns an AQI between 0 and 999 or None if the sensor reading is invalid.
-
-    See AQI_BREAKPOINTS in const.py.
-    """
-
-    if index not in AQI_BREAKPOINTS:
-        _LOGGER.debug('calc_aqi requested for unknown type: %s', index)
-        return None
-
-    aqi_bp_index = AQI_BREAKPOINTS[index]
-    aqi_bp = next((bp for bp in aqi_bp_index if bp.pm_low <= value <= bp.pm_high), None)
-
-    if not aqi_bp:
-        _LOGGER.debug('value %s did not fall in valid range for type %s', value, index)
-        return None
-
-    aqi_range = aqi_bp.aqi_high - aqi_bp.aqi_low
-    pm_range = aqi_bp.pm_high - aqi_bp.pm_low
-    aqi_c = value - aqi_bp.pm_low
-    return round((aqi_range / pm_range) * aqi_c + aqi_bp.aqi_low)
-
-
-def calculate_sensor_values(nodes):
-    """
-    Mutates the provided node dictionary in place by iterating over the raw sensor data and provides
-    a normalized view and adds any calculated properties.
-    """
-
-    for node in nodes:
-        readings = nodes[node]['readings']
-        _LOGGER.debug('processing node %s, readings: %s', node, readings)
-
-        if 'A' in readings and 'B' in readings:
-            for prop in JSON_PROPERTIES:
-                if a_reading := readings['A'].get(prop):
-                    a_reading = float(a_reading)
-
-                    if b_reading := readings['B'].get(prop):
-                        b_reading = float(b_reading)
-                        readings[prop] = round((a_reading + b_reading) / 2, 1)
-
-                        confidence = 'Good' if abs(a_reading - b_reading) < 45 else 'Questionable'
-                        readings[f'{prop}_confidence'] = confidence
-                    else:
-                        readings[prop] = round(a_reading, 1)
-                        readings[f'{prop}_confidence'] = 'Single'
-                else:
-                    readings[prop] = None
-        else:
-            for prop in JSON_PROPERTIES:
-                if prop in readings['A']:
-                    a_reading = float(readings['A'][prop])
-                    readings[prop] = round(a_reading, 1)
-                    readings[f'{prop}_confidence'] = 'Good'
-                else:
-                    readings[prop] = None
-
-        if pm25atm := readings.get('pm2_5_atm'):
-            readings['pm2_5_atm_aqi'] = calc_aqi(pm25atm, 'pm2_5')
-
-        _LOGGER.debug('node results %s, readings: %s', node, readings)
-
-
 async def get_node_configuration(session: ClientSession, url: str):
     """
     Gets a configuration for the node at the  given PurpleAir URL. This string expects to see a URL
@@ -310,45 +200,3 @@ async def get_node_configuration(session: ClientSession, url: str):
     _LOGGER.debug('generated config for node %s: %s', node_id, config)
 
     return config
-
-
-class PurpleAirApiError(Exception):
-    """Raised when an error with the PurpleAir APi is encountered.
-
-    Attributes:
-        message -- An explanation of the error.
-    """
-
-    def __init__(self, message: str):
-        super().__init__()
-        self.message = message
-
-
-class PurpleAirApiUrlError(PurpleAirApiError):
-    """Raised when an invalid PurpleAir URL is encountered.
-
-    Attributes:
-        message -- An explanation of the error.
-        url     -- The URL that is considered invalid.
-    """
-
-    def __init__(self, message: str, url: str):
-        super().__init__(message)
-        self.url = url
-
-
-class PurpleAirApiStatusError(PurpleAirApiError):
-    """Raised when an error occurs when communicating with the PurpleAir API.
-
-    Attributes:
-        message -- Generic error message.
-        url     -- The URL that caused the error.
-        status  -- Status code returned from the server.
-        text    -- Any data returned in the body of the error from the server.
-    """
-
-    def __init__(self, url: str, status: int, text: str):
-        super().__init__('An error occurred while communicating with the PurpleAir API.')
-        self.url = url
-        self.status = status
-        self.text = text

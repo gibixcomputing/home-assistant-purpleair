@@ -1,4 +1,5 @@
 """ The Purple Air air_quality platform. """
+
 import logging
 
 from typing import Final
@@ -125,6 +126,7 @@ class PurpleAirSensor(CoordinatorEntity):
         self.entity_description = description
         self.node_id = config.node_id
 
+        self._warn_readings = False
         self._warn_stale = False
 
     @property
@@ -150,6 +152,18 @@ class PurpleAirSensor(CoordinatorEntity):
 
             return False
 
+        if self._get_confidence() == 'invalid':
+            if not self._warn_readings:
+                _LOGGER.warning(
+                    'PurpleAir Sensor "%s" (%s) is returning invalid data',
+                    self.config.title,
+                    self.node_id
+                )
+                self._warn_readings = True
+
+            return False
+
+        self._warn_readings = False
         self._warn_stale = False
         return True
 
@@ -167,11 +181,15 @@ class PurpleAirSensor(CoordinatorEntity):
     def extra_state_attributes(self):
         """Gets extra data about the primary sensor (AQI)."""
 
-        if not self.entity_description.primary:
-            return None
-
         node = self.coordinator.data.get(self.node_id)
         if not node:
+            return None
+
+        confidence = self._get_confidence()
+
+        if not self.entity_description.primary:
+            if confidence:
+                return {'confidence': confidence}
             return None
 
         attrs = {
@@ -187,18 +205,28 @@ class PurpleAirSensor(CoordinatorEntity):
             attrs['latitude'] = node['lat']
             attrs['longitude'] = node['lon']
 
+        if confidence:
+            attrs['confidence'] = confidence
+
         return attrs
 
     @property
     def state(self):
         """Returns the calculated AQI of the sensor as the current state."""
 
-        node = self.coordinator.data.get(self.node_id)
-        if not node:
-            return None
-
-        readings = node.get('readings')
+        readings = self._get_readings()
         if not readings:
             return None
 
         return readings.get(self.entity_description.key)
+
+    def _get_confidence(self):
+        readings = self._get_readings()
+        # remove the _aqi suffix from the key, to get the underlying confidence
+        key = f'{self.entity_description.key.replace("_aqi", "")}_confidence'
+
+        return readings.get(key) if readings else None
+
+    def _get_readings(self):
+        node = self.coordinator.data.get(self.node_id)
+        return node.get('readings') if node else None
