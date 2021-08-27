@@ -2,11 +2,55 @@
 import logging
 from datetime import datetime, timezone
 
-from .const import AQI_BREAKPOINTS, JSON_PROPERTIES, MAX_PM_READING, PM_PROPERTIES
+from .const import (
+    AQI_BREAKPOINTS,
+    API_ATTR_HUMIDITY,
+    API_ATTR_TEMP_F,
+    JSON_PROPERTIES,
+    MAX_PM_READING,
+    PM_PROPERTIES,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
 WARNED_NODES = []
+
+
+def add_aqi_calculations(readings):
+    """
+    This adds the custom AQI properties to the readings, calculating them based off the corrections
+    and breakpoints, providing a few variations depending what is needed.
+    """
+
+    if pm25atm := readings.get('pm2_5_atm'):
+        readings['pm2_5_atm_aqi'] = calc_aqi(pm25atm, 'pm2_5')
+
+
+def apply_corrections(readings):
+    """
+    The sensors for temperature and humidity are known to be slightly outside of real values, this
+    will apply a blanket correction of subtracting 8°F from the temperature and adding 4% to the
+    humidity value. This is documented as the average variance for those two sensor values.
+
+    From the docs:
+        Humidity:
+            Relative humidity inside of the sensor housing (%). On average, this is 4% lower than
+            ambient conditions. Null if not equipped.
+
+        Temperature:
+            Temperature inside of the sensor housing (F). On average, this is 8F higher than ambient
+            conditions. Null if not equipped.
+    """
+
+    if temperature := readings.get(API_ATTR_TEMP_F):
+        readings[API_ATTR_TEMP_F] = temperature - 8
+        _LOGGER.debug('applied temperature correction from %s to %s',
+                      temperature, readings[API_ATTR_TEMP_F])
+
+    if humidity := readings.get(API_ATTR_HUMIDITY):
+        readings[API_ATTR_HUMIDITY] = humidity + 4
+        _LOGGER.debug('applied humidity correction from %s to %s',
+                      humidity, readings[API_ATTR_HUMIDITY])
 
 
 def build_nodes(results):
@@ -87,7 +131,7 @@ def calculate_sensor_values(nodes):
 
     for node in nodes:
         readings = nodes[node]['readings']
-        _LOGGER.debug('processing node %s, readings: %s', node, readings)
+        _LOGGER.debug('(%s): processing readings: %s', node, readings)
 
         if 'A' in readings and 'B' in readings:
             for prop in JSON_PROPERTIES:
@@ -117,10 +161,14 @@ def calculate_sensor_values(nodes):
                 else:
                     readings[prop] = None
 
-        if pm25atm := readings.get('pm2_5_atm'):
-            readings['pm2_5_atm_aqi'] = calc_aqi(pm25atm, 'pm2_5')
+        apply_corrections(readings)
+        add_aqi_calculations(readings)
 
-        _LOGGER.debug('node results %s, readings: %s', node, readings)
+        # clean up intermediate results
+        readings.pop('A', None)
+        readings.pop('B', None)
+
+        _LOGGER.debug('(%s): results: %s', node, readings)
 
 
 def get_pm_reading(node: str, prop: str, a_value: float, b_value: float, label: str):
