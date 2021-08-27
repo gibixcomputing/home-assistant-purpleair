@@ -4,7 +4,10 @@ Provides an API capable of communicating with the free PurpleAir service.
 
 import asyncio
 import logging
+import re
 from datetime import datetime, timezone
+
+from aiohttp import ClientSession
 
 from .const import (
     AQI_BREAKPOINTS,
@@ -18,8 +21,10 @@ _LOGGER = logging.getLogger(__name__)
 class PurpleAirApi:
     """Provides the API capable of communicating with PurpleAir."""
 
-    def __init__(self, session):
-        self._session = session
+    session: ClientSession
+
+    def __init__(self, session: ClientSession):
+        self.session = session
 
         self._api_issues = False
         self._nodes = {}
@@ -57,8 +62,8 @@ class PurpleAirApi:
     async def update(self, now=None):
         """Main update process to query and update sensor data."""
 
-        public_nodes = [node_id for node_id in self._nodes if not self._nodes[node_id]['hidden']]
-        private_nodes = [node_id for node_id in self._nodes if self._nodes[node_id]['hidden']]
+        public_nodes = [node_id for (node_id, data) in self._nodes.items() if not data['hidden']]
+        private_nodes = [node_id for (node_id, data) in self._nodes.items() if data['hidden']]
 
         _LOGGER.debug('public nodes: %s, private nodes: %s', public_nodes, private_nodes)
 
@@ -82,7 +87,7 @@ class PurpleAirApi:
             by_keys = {}
             for node in private_nodes:
                 data = self._nodes[node]
-                key = data['key'] if 'key' in data else None
+                key = data.get('key')
 
                 if key:
                     if key not in by_keys:
@@ -118,7 +123,7 @@ class PurpleAirApi:
             # be nice to the free API when fetching multiple URLs
             await asyncio.sleep(0.5)
 
-            async with self._session.get(url) as response:
+            async with self.session.get(url) as response:
                 if response.status != 200:
                     if not self._api_issues:
                         self._api_issues = True
@@ -172,9 +177,9 @@ def build_nodes(results):
 
         readings = nodes[node_id]['readings']
 
-        sensor_data = readings[sensor] if sensor in readings else {}
+        sensor_data = readings.get(sensor, {})
         for prop in JSON_PROPERTIES:
-            sensor_data[prop] = result[prop] if prop in result else None
+            sensor_data[prop] = result.get(prop)
 
         if not all(value is None for value in sensor_data.values()):
             readings[sensor] = sensor_data
@@ -199,21 +204,21 @@ def calc_aqi(value, index):
         return None
 
     aqi_bp_index = AQI_BREAKPOINTS[index]
-    aqi_bp = next((bp for bp in aqi_bp_index if bp['pm_low'] <= value <= bp['pm_high']), None)
+    aqi_bp = next((bp for bp in aqi_bp_index if bp.pm_low <= value <= bp.pm_high), None)
 
     if not aqi_bp:
         _LOGGER.debug('value %s did not fall in valid range for type %s', value, index)
         return None
 
-    aqi_range = aqi_bp['aqi_high'] - aqi_bp['aqi_low']
-    pm_range = aqi_bp['pm_high'] - aqi_bp['pm_low']
-    aqi_c = value - aqi_bp['pm_low']
-    return round((aqi_range / pm_range) * aqi_c + aqi_bp['aqi_low'])
+    aqi_range = aqi_bp.aqi_high - aqi_bp.aqi_low
+    pm_range = aqi_bp.pm_high - aqi_bp.pm_low
+    aqi_c = value - aqi_bp.pm_low
+    return round((aqi_range / pm_range) * aqi_c + aqi_bp.aqi_low)
 
 
 def calculate_sensor_values(nodes):
     """
-    Mutates the provided ndoe dictionary in place by iterating over the raw sensor data and provides
+    Mutates the provided node dictionary in place by iterating over the raw sensor data and provides
     a normalized view and adds any calculated properties.
     """
 
@@ -250,3 +255,100 @@ def calculate_sensor_values(nodes):
             readings['pm2_5_atm_aqi'] = calc_aqi(pm25atm, 'pm2_5')
 
         _LOGGER.debug('node results %s, readings: %s', node, readings)
+
+
+async def get_node_configuration(session: ClientSession, url: str):
+    """
+    Gets a configuration for the node at the  given PurpleAir URL. This string expects to see a URL
+    in the following format:
+
+        https://www.purpleair.com/json?key={key}&show={node_id}
+        https://www.purpleair.com/sensorlist?key={key}&show={node_id}
+    """
+
+    if not re.match(r'.*purpleair.*', url, re.IGNORECASE):
+        raise PurpleAirApiUrlError('Provided URL is invalid', url)
+
+    key_match = re.match(r'.*key=(?P<key>[^&]+)', url)
+    node_match = re.match(r'.*show=(?P<node_id>[^&]+)', url)
+
+    key = key_match.group('key') if key_match else None
+    node_id = node_match.group('node_id') if node_match else None
+
+    if not key or not node_id:
+        raise PurpleAirApiUrlError('Unable to get node and/or key from URL', url)
+
+    api_url = PRIVATE_URL.format(nodes=node_id, key=key)
+    _LOGGER.debug('getting node info from url %s', api_url)
+
+    data = {}
+    async with session.get(api_url) as response:
+        if not response.status == 200:
+            raise PurpleAirApiStatusError(api_url, response.status, await response.text())
+
+        data = await response.json()
+
+    results = data.get('results', [])
+    if not results or len(results) == 0:
+        raise PurpleAirApiError('Missing results from JSON response')
+
+    node = results[0]
+    _LOGGER.debug('got node %s', node)
+    node_id = node.get('ParentID') or node['ID']
+    if not node_id:
+        raise PurpleAirApiError('Missing node ID or ParentID')
+
+    node_id = str(node_id)
+
+    config = {
+        'title': node.get('Label'),
+        'node_id': node_id,
+        'hidden': node.get('Hidden') == 'true',
+        'key': node.get('THINGSPEAK_PRIMARY_ID_READ_KEY')
+    }
+
+    _LOGGER.debug('generated config for node %s: %s', node_id, config)
+
+    return config
+
+
+class PurpleAirApiError(Exception):
+    """Raised when an error with the PurpleAir APi is encountered.
+
+    Attributes:
+        message -- An explanation of the error.
+    """
+
+    def __init__(self, message: str):
+        super().__init__()
+        self.message = message
+
+
+class PurpleAirApiUrlError(PurpleAirApiError):
+    """Raised when an invalid PurpleAir URL is encountered.
+
+    Attributes:
+        message -- An explanation of the error.
+        url     -- The URL that is considered invalid.
+    """
+
+    def __init__(self, message: str, url: str):
+        super().__init__(message)
+        self.url = url
+
+
+class PurpleAirApiStatusError(PurpleAirApiError):
+    """Raised when an error occurs when communicating with the PurpleAir API.
+
+    Attributes:
+        message -- Generic error message.
+        url     -- The URL that caused the error.
+        status  -- Status code returned from the server.
+        text    -- Any data returned in the body of the error from the server.
+    """
+
+    def __init__(self, url: str, status: int, text: str):
+        super().__init__('An error occurred while communicating with the PurpleAir API.')
+        self.url = url
+        self.status = status
+        self.text = text

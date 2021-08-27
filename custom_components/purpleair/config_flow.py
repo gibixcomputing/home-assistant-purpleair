@@ -7,6 +7,7 @@ from homeassistant.const import CONF_URL
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import DOMAIN
+from .purple_air_api import get_node_configuration
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -17,30 +18,16 @@ async def validate_input(hass: core.HomeAssistant, data):
     Data has the keys from DATA_SCHEMA with values provided by the user.
     """
 
-    json = {}
-    client = async_get_clientsession(hass)
+    session = async_get_clientsession(hass)
     url = data['url']
-    _LOGGER.debug('using url: %s', url)
-    async with client.get(url) as resp:
-        if not resp.status == 200:
-            raise InvalidResponse(resp)
 
-        json = await resp.json()
+    config = {}
+    try:
+        config = await get_node_configuration(session, url)
+    except Exception as error:
+        raise PurpleAirConfigError(error) from error
 
-    node = json['results'][0]
-    node_id = str(node['ID'])
-    if 'ParentID' in node:
-        node_id = str(node['ParentID'])
-
-    config = {
-        'title': node['Label'],
-        'node_id': node_id,
-        'hidden': node['Hidden'] == 'true',
-        'key': node['THINGSPEAK_PRIMARY_ID_READ_KEY'],
-    }
-
-    _LOGGER.debug('generated config data: %s', config)
-
+    _LOGGER.debug('got configuration %s', config)
     return config
 
 
@@ -66,8 +53,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "cannot_connect"
             except InvalidAuth:
                 errors["base"] = "invalid_auth"
-            except Exception:  # pylint: disable=broad-except
-                _LOGGER.exception("Unexpected exception")
+            except Exception as error:  # pylint: disable=broad-except
+                _LOGGER.exception("Unexpected exception: %s", error)
                 errors["base"] = "unknown"
 
         data_schema = vol.Schema(
@@ -89,8 +76,8 @@ class InvalidAuth(exceptions.HomeAssistantError):
     """Error to indicate there is invalid auth."""
 
 
-class InvalidResponse(exceptions.HomeAssistantError):
+class PurpleAirConfigError(exceptions.HomeAssistantError):
     """Error to indicate a bad HTTP response."""
 
-    def __init__(self, response):
-        self.response = response
+    def __init__(self, error):
+        self.error = error

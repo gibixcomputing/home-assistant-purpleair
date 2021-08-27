@@ -9,14 +9,12 @@ Assistant, and add the integration via the UI (it's simple!).
 To find a sensor to integrate:
 
 1. Look at the [PurpleAir Map][1].
-2. Find and click an available _outdoor_ station (indoor won't do you
-   any good).
-3. In the station pop up, click on "Get This Widget".
-4. Right-click the "JSON" link at the bottom of the black box and copy
-   the link. (Copy Link Location, et al.)
-5. Go to Home Assistant and go to the Integrations Page.
-6. Add the PurpleAir integration.
-7. Paste the link and finish.
+2. Find and click an available station.
+3. In the station pop up, right click on "Get This Widget" and copy the
+   link. (Copy Link Location, et al.)
+4. Go to Home Assistant and go to the Integrations Page.
+5. Add the PurpleAir integration.
+6. Paste the link and finish.
 
 You'll have two entities added: an `air_quality` entity and a `sensor`
 entity. The air quality fills out all available values via the state
