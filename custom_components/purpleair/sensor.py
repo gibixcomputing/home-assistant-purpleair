@@ -208,6 +208,10 @@ class PurpleAirSensor(CoordinatorEntity):
         if confidence:
             attrs['confidence'] = confidence
 
+        readings = self._get_readings()
+        if aqi_status := readings.get(f'{self.entity_description.key}_aqi_status'):
+            attrs['aqi_status'] = aqi_status
+
         return attrs
 
     @property
@@ -222,8 +226,7 @@ class PurpleAirSensor(CoordinatorEntity):
 
     def _get_confidence(self):
         readings = self._get_readings()
-        # remove the _aqi suffix from the key, to get the underlying confidence
-        key = f'{self.entity_description.key.replace("_aqi", "")}_confidence'
+        key = f'{self.entity_description.key}_confidence'
 
         return readings.get(key) if readings else None
 

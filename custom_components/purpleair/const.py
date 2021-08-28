@@ -23,6 +23,7 @@ from .purple_air_api.const import (
     API_ATTR_PM10,
     API_ATTR_PM25,
     API_ATTR_PM25_AQI,
+    API_ATTR_PM25_AQI_RAW,
     API_ATTR_HUMIDITY,
     API_ATTR_TEMP_F,
     API_ATTR_PRESSURE,
@@ -43,6 +44,15 @@ SENSOR_TYPES: tuple[PurpleAirSensorEntityDescription, ...] = (
         unique_id_suffix='air_quality_index',
         enable_default=True,
         primary=True,
+    ),
+    PurpleAirSensorEntityDescription(
+        key=API_ATTR_PM25_AQI_RAW,
+        name='Air Quality Index (Raw)',
+        icon='mdi:weather-hazy',
+        device_class=DEVICE_CLASS_AQI,
+        state_class=STATE_CLASS_MEASUREMENT,
+        native_unit_of_measurement='AQI',
+        unique_id_suffix='aqi_raw',
     ),
     PurpleAirSensorEntityDescription(
         key=API_ATTR_PM25,
