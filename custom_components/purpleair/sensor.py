@@ -80,7 +80,7 @@ async def async_setup_entry(
         sensors.append(PurpleAirSensor(config, description, coordinator))
 
     # register this entry in the API list
-    api.register_node(config.node_id, config.hidden, config.key)
+    api.register_node(config)
 
     # check for the number of registered nodes during startup to only request an update
     # once all expected nodes are registered.

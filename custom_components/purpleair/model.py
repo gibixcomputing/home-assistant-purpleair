@@ -23,6 +23,19 @@ class PurpleAirConfigEntry:
     node_id: str = None
     title: str = None
 
+    def asdict(self) -> dict:
+        """Returns this entry as a dict."""
+        return {
+            'node_id': self.node_id,
+            'title': self.title,
+            'key': self.key,
+            'hidden': self.hidden,
+        }
+
+    def get_uniqueid(self) -> str:
+        """Gets the unique id."""
+        return f'purpleair_{self.node_id}'
+
 
 @dataclass
 class PurpleAirSensorEntityDescription(SensorEntityDescription):

@@ -4,6 +4,22 @@ from typing import List, TypedDict
 
 
 @dataclass
+class PurpleAirApiConfigEntry:
+    """Describes a configuration entry for the PurpleAir API.
+
+    Attributes:
+        node_id -- The ID of the sensor being configured
+        title   -- The title of the sensor
+        hidden  -- Flag indicating whether the sensor is private or public
+        key     -- Key used when retrieving sensor data. Required if the hidden attribute is True.
+    """
+    node_id: str
+    title: str
+    hidden: bool
+    key: str = None
+
+
+@dataclass
 class AqiBreakpoint:
     """Describes a breakpoint for calculating AQI.
 

@@ -5,6 +5,7 @@ Provides an API capable of communicating with the free PurpleAir service.
 import asyncio
 import logging
 import re
+from typing import Dict, List
 
 from aiohttp import ClientSession
 
@@ -14,6 +15,7 @@ from .exceptions import (
     PurpleAirApiStatusError,
     PurpleAirApiUrlError,
 )
+from .model import PurpleAirApiConfigEntry
 from .util import build_nodes, calculate_sensor_values
 
 _LOGGER = logging.getLogger(__name__)
@@ -22,30 +24,36 @@ _LOGGER = logging.getLogger(__name__)
 class PurpleAirApi:
     """Provides the API capable of communicating with PurpleAir."""
 
+    nodes: Dict[str, PurpleAirApiConfigEntry]
     session: ClientSession
 
     def __init__(self, session: ClientSession):
+        self.nodes = {}
         self.session = session
 
         self._api_issues = False
-        self._nodes = {}
 
     def get_node_count(self):
         """Gets the number of nodes registered with the API."""
-        return len(self._nodes)
+        return len(self.nodes)
 
-    def register_node(self, node_id, hidden, key):
+    def register_node(self, node: PurpleAirApiConfigEntry):
         """
         Registers a node with this instance. This will schedule a periodic poll against PurpleAir if
         this is the first sensor added and schedule an immediate API request after 5 seconds.
         """
 
-        if node_id in self._nodes:
-            _LOGGER.debug('detected duplicate registration: %s', node_id)
+        if node.node_id in self.nodes:
+            _LOGGER.debug('detected duplicate registration: %s', node.node_id)
             return
 
-        self._nodes[node_id] = {'hidden': hidden, 'key': key}
-        _LOGGER.debug('registered new node: %s', node_id)
+        self.nodes[node.node_id] = PurpleAirApiConfigEntry(
+            node_id=node.node_id,
+            title=node.title,
+            key=node.key,
+            hidden=node.hidden
+        )
+        _LOGGER.debug('registered new node: %s', node.node_id)
 
     def unregister_node(self, node_id):
         """
@@ -53,18 +61,18 @@ class PurpleAirApi:
         registered node the periodic polling is shut down.
         """
 
-        if node_id not in self._nodes:
+        if node_id not in self.nodes:
             _LOGGER.debug('detected non-existent unregistration: %s', node_id)
             return
 
-        del self._nodes[node_id]
+        del self.nodes[node_id]
         _LOGGER.debug('unregistered node: %s', node_id)
 
     async def update(self):
         """Main update process to query and update sensor data."""
 
-        public_nodes = [node_id for (node_id, data) in self._nodes.items() if not data['hidden']]
-        private_nodes = [node_id for (node_id, data) in self._nodes.items() if data['hidden']]
+        public_nodes = [node_id for (node_id, data) in self.nodes.items() if not data.hidden]
+        private_nodes = [node_id for (node_id, data) in self.nodes.items() if data.hidden]
 
         _LOGGER.debug('public nodes: %s, private nodes: %s', public_nodes, private_nodes)
 
@@ -83,18 +91,18 @@ class PurpleAirApi:
         attempting to combine as many sensors in to as few API requests as possible.
         """
 
-        urls = []
+        urls: List[str] = []
         if private_nodes:
-            by_keys = {}
-            for node in private_nodes:
-                data = self._nodes[node]
-                key = data.get('key')
+            by_keys: Dict[str, str] = {}
+            for node_id in private_nodes:
+                node = self.nodes[node_id]
+                key = node.key
 
                 if key:
                     if key not in by_keys:
                         by_keys[key] = []
 
-                    by_keys[key].append(node)
+                    by_keys[key].append(node_id)
 
             used_public = False
             for key, private_nodes_for_key in by_keys.items():
@@ -190,12 +198,12 @@ async def get_node_configuration(session: ClientSession, url: str):
 
     node_id = str(node_id)
 
-    config = {
-        'title': node.get('Label'),
-        'node_id': node_id,
-        'hidden': node.get('Hidden') == 'true',
-        'key': node.get('THINGSPEAK_PRIMARY_ID_READ_KEY')
-    }
+    config = PurpleAirApiConfigEntry(
+        node_id=node_id,
+        title=node.get('Label'),
+        hidden=node.get('Hidden') == 'true',
+        key=node.get('THINGSPEAK_PRIMARY_ID_READ_KEY')
+    )
 
     _LOGGER.debug('generated config for node %s: %s', node_id, config)
 

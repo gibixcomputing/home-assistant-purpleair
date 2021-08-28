@@ -7,6 +7,7 @@ from homeassistant.const import CONF_URL
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import DOMAIN
+from .model import PurpleAirConfigEntry
 from .purple_air_api import get_node_configuration
 
 _LOGGER = logging.getLogger(__name__)
@@ -21,11 +22,18 @@ async def validate_input(hass: core.HomeAssistant, data):
     session = async_get_clientsession(hass)
     url = data['url']
 
-    config = {}
+    node = {}
     try:
-        config = await get_node_configuration(session, url)
+        node = await get_node_configuration(session, url)
     except Exception as error:
         raise PurpleAirConfigError(error) from error
+
+    config = PurpleAirConfigEntry(
+        node_id=node.node_id,
+        title=node.title,
+        key=node.key,
+        hidden=node.key
+    )
 
     _LOGGER.debug('got configuration %s', config)
     return config
@@ -43,12 +51,12 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
         if user_input is not None:
             try:
-                info = await validate_input(self.hass, user_input)
+                config = await validate_input(self.hass, user_input)
 
-                await self.async_set_unique_id(f'purpleair_{info["node_id"]}')
+                await self.async_set_unique_id(config.get_uniqueid())
                 self._abort_if_unique_id_configured()
 
-                return self.async_create_entry(title=info["title"], data=info)
+                return self.async_create_entry(title=config.title, data=config.asdict())
             except CannotConnect:
                 errors["base"] = "cannot_connect"
             except InvalidAuth:
