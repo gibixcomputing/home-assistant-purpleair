@@ -1,6 +1,7 @@
 """Provides utility functions for the PurpleAir API."""
 import logging
 from datetime import datetime, timezone
+from typing import Dict
 
 from .const import (
     AQI_BREAKPOINTS,
@@ -15,11 +16,13 @@ from .const import (
     PM_PROPERTIES,
 )
 
+from .model import EpaAvgValues
+
 _LOGGER = logging.getLogger(__name__)
 
 WARNED_NODES = []
 
-EPA_AVG_DATA = {}
+EPA_AVG_DATA: Dict[str, EpaAvgValues] = {}
 
 
 def add_aqi_calculations(node, readings):
