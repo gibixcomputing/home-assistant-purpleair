@@ -5,6 +5,7 @@ import logging
 from typing import Final
 
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import ATTR_LATITUDE, ATTR_LONGITUDE
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -202,8 +203,8 @@ class PurpleAirSensor(CoordinatorEntity):
         }
 
         if node['lat'] != 0 and node['lon'] != 0:
-            attrs['latitude'] = node['lat']
-            attrs['longitude'] = node['lon']
+            attrs[ATTR_LATITUDE] = node['lat']
+            attrs[ATTR_LONGITUDE] = node['lon']
 
         if confidence:
             attrs['confidence'] = confidence

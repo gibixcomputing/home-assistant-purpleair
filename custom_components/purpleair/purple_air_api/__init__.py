@@ -60,7 +60,7 @@ class PurpleAirApi:
         del self._nodes[node_id]
         _LOGGER.debug('unregistered node: %s', node_id)
 
-    async def update(self, now=None):
+    async def update(self):
         """Main update process to query and update sensor data."""
 
         public_nodes = [node_id for (node_id, data) in self._nodes.items() if not data['hidden']]
