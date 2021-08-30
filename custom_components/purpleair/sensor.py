@@ -19,6 +19,7 @@ from .const import (
 
 from .model import (
     PurpleAirConfigEntry,
+    PurpleAirDomainData,
     PurpleAirSensorEntityDescription,
 )
 
@@ -37,9 +38,10 @@ async def async_setup_entry(
     config = PurpleAirConfigEntry(**config_entry.data)
     _LOGGER.debug('registring entry with api with sensor with data: %s', config)
 
-    api = hass.data[DOMAIN]['api']
-    coordinator = hass.data[DOMAIN]['coordinator']
-    expected_entries = hass.data[DOMAIN]['expected_entries']
+    domain_data: PurpleAirDomainData = hass.data[DOMAIN]
+    api = domain_data.api
+    coordinator = domain_data.coordinator
+    expected_entries = domain_data.expected_entries
 
     dev_registry = device_registry.async_get(hass)
     device = dev_registry.async_get_device({(DOMAIN, config.node_id)})
@@ -92,7 +94,7 @@ async def async_setup_entry(
         and not coordinator.data.get(config.node_id)  # skips refresh if enabling extra sensors
     ):
         await coordinator.async_config_entry_first_refresh()
-        hass.data[DOMAIN]['expected_entries'] = None
+        hass.data[DOMAIN].expected_entries = 0
 
     async_schedule_add_entities(sensors, False)
 

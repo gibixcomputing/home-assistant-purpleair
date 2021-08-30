@@ -1,9 +1,15 @@
 """Typing definitions for PurpleAir integration."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from typing import TYPE_CHECKING
 
 from homeassistant.components.sensor import SensorEntityDescription
+
+if TYPE_CHECKING:
+    from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+
+    from .purple_air_api import PurpleAirApi
 
 
 @dataclass
@@ -25,16 +31,26 @@ class PurpleAirConfigEntry:
 
     def asdict(self) -> dict:
         """Returns this entry as a dict."""
-        return {
-            'node_id': self.node_id,
-            'title': self.title,
-            'key': self.key,
-            'hidden': self.hidden,
-        }
+        return asdict(self)
 
     def get_uniqueid(self) -> str:
         """Gets the unique id."""
         return f'purpleair_{self.node_id}'
+
+
+@dataclass
+class PurpleAirDomainData():
+    """Provides access to data properties stored in the Home Assistant DOMAIN data dict.
+
+    Attributes:
+        api              -- The shared API instance used to query the PurpleAir API.
+        coordinator      -- The shared data update coordinator for use with HA sensors.
+        expected_entries -- The number of expected entries to see on startup. Used to minimize the
+                            number of queries to the API. Set to zero after startup is complete.
+    """
+    api: PurpleAirApi
+    coordinator: DataUpdateCoordinator
+    expected_entries: int = 0
 
 
 @dataclass

@@ -11,7 +11,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import DOMAIN, SCAN_INTERVAL
-from .model import PurpleAirConfigEntry
+from .model import PurpleAirConfigEntry, PurpleAirDomainData
 from .purple_air_api import PurpleAirApi
 
 PARALLEL_UPDATES = 1
@@ -57,11 +57,11 @@ async def async_setup(hass: HomeAssistant, config: dict):
 
     entries = hass.config_entries.async_entries(DOMAIN)
 
-    hass.data[DOMAIN] = {
-        'api': api,
-        'coordinator': coordinator,
-        'expected_entries': len(entries),
-    }
+    hass.data[DOMAIN] = PurpleAirDomainData(
+        api=api,
+        coordinator=coordinator,
+        expected_entries=len(entries),
+    )
 
     return True
 
@@ -104,7 +104,7 @@ async def async_remove_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     config = PurpleAirConfigEntry(**config_entry.data)
     _LOGGER.debug('unregistering entry %s from api', config.node_id)
 
-    api = hass.data[DOMAIN]['api']
+    api = hass.data[DOMAIN].api
     api.unregister_node(config.node_id)
 
     coordinator = hass.data[DOMAIN]['coordinator']
