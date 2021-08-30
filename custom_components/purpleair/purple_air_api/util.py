@@ -19,7 +19,7 @@ from .const import (
     PM_PROPERTIES,
 )
 
-from .model import EpaAvgValue, EpaAvgValueCache
+from .model import EpaAvgValue, EpaAvgValueCache, PurpleAirSensorData
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ def add_aqi_calculations(nodes, *, cache: EpaAvgValueCache = None):
             add_aqi_calculations.cache = cache
 
     for node_id in nodes:
-        readings = nodes[node_id]['readings']
+        readings = nodes[node_id].readings
 
         confidence = readings.get(f'{API_ATTR_PM25}_confidence')
         if pm25atm := readings.get(API_ATTR_PM25):
@@ -116,47 +116,46 @@ def apply_corrections(readings):
                       humidity, readings[API_ATTR_HUMIDITY])
 
 
-def build_nodes(results):
+def build_nodes(results) -> dict[str, PurpleAirSensorData]:
     """
     Builds a dictionary of nodes and extracts available data from the JSON result array returned
     from the PurpleAir API.
     """
 
-    nodes = {}
+    sensors: dict[str, PurpleAirSensorData] = {}
     for result in results:
-        sensor = 'A' if 'ParentID' not in result else 'B'
-        node_id = str(result['ID'])
+        pa_sensor_id = str(result.get('ParentID', result['ID']))
 
-        if sensor == 'A':
-            nodes[node_id] = {
-                'last_seen': datetime.fromtimestamp(result['LastSeen'], timezone.utc),
-                'last_update': datetime.fromtimestamp(result['LastUpdateCheck'], timezone.utc),
-                'device_location': result.get('DEVICE_LOCATIONTYPE', 'unknown'),
-                'readings': {},
-                'version': result.get('Version', 'unknown'),
-                'type': result.get('Type', 'unknown'),
-                'label': result.get('Label'),
-                'lat': float(result.get('Lat', 0)),
-                'lon': float(result.get('Lon', 0)),
-                'rssi': float(result.get('RSSI', 0)),
-                'adc': float(result.get('Adc', 0)),
-                'uptime': int(result.get('Uptime', 0)),
-            }
-        else:
-            node_id = str(result['ParentID'])
+        if pa_sensor_id not in sensors:
+            sensors[pa_sensor_id] = PurpleAirSensorData(
+                pa_sensor_id=pa_sensor_id,
+                label=str(result.get('Label')),
+                last_seen=datetime.fromtimestamp(result['LastSeen'], timezone.utc),
+                last_update=datetime.fromtimestamp(result['LastUpdateCheck'], timezone.utc),
+                device_location=str(result.get('DEVICE_LOCATIONTYPE', 'unknown')),
+                version=str(result.get('Version', 'unknown')),
+                type=str(result.get('Type', 'unknown')),
+                lat=float(result.get('Lat', 0)) or None,
+                lon=float(result.get('Lon', 0)) or None,
+                rssi=float(result.get('RSSI', 0)),
+                adc=float(result.get('Adc', 0)),
+                uptime=int(result.get('Uptime', 0)),
+            )
 
-        readings = nodes[node_id]['readings']
+        sensor = sensors[pa_sensor_id]
+        readings = sensor.readings
 
-        sensor_data = readings.get(sensor, {})
+        channel = 'B' if 'ParentID' in result else 'A'
+        channel_data = readings.get(channel, {})
         for prop in JSON_PROPERTIES:
-            sensor_data[prop] = result.get(prop)
+            channel_data[prop] = result.get(prop)
 
-        if not all(value is None for value in sensor_data.values()):
-            readings[sensor] = sensor_data
+        if not all(value is None for value in channel_data.values()):
+            readings[channel] = channel_data
         else:
-            _LOGGER.debug('node %s:%s did not contain any data', node_id, sensor)
+            _LOGGER.debug('node %s:%s did not contain any data', pa_sensor_id, channel)
 
-    return nodes
+    return sensors
 
 
 def calc_aqi(value, index):
@@ -193,7 +192,7 @@ def calculate_sensor_values(nodes):
     """
 
     for node in nodes:
-        readings = nodes[node]['readings']
+        readings = nodes[node].readings
         _LOGGER.debug('(%s): processing readings: %s', node, readings)
 
         if 'A' in readings and 'B' in readings:
@@ -204,7 +203,7 @@ def calculate_sensor_values(nodes):
                     if b_value := readings['B'].get(prop):
                         b_value = float(b_value)
 
-                        label = nodes[node]['label']
+                        label = nodes[node].label
 
                         (value, confidence) = get_pm_reading(node, prop, a_value, b_value, label)
 

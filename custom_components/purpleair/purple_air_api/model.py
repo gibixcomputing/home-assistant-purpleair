@@ -4,6 +4,7 @@ from __future__ import annotations
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Optional
 
 
 @dataclass
@@ -19,7 +20,41 @@ class PurpleAirApiConfigEntry:
     node_id: str
     title: str
     hidden: bool
-    key: str = None
+    key: Optional[str] = None
+
+
+@dataclass
+class PurpleAirSensorData:  # pylint: disable=too-many-instance-attributes
+    """Represents parsed individual sensor information from the PurpleAir API.
+
+    Attributes:
+        pa_sensor_id    -- Registered ID of the PurleAir Sensor
+        label           -- API user-defined name of the sensor.
+        last_seen       -- Date and time the sensor was last seen according to the API.
+        last_update     -- Date and time the sensor last updated according to the API.
+        readings        -- Dictonary holding the computed sensor reading data.
+        device_location -- Location of the sensor (currently 'indoor', 'outdoor', or 'unknown').
+        version         -- Firmware version of the sensor.
+        type            -- Type of the air quality sensors in the PurpleAir sensor.
+        lat             -- Latitude of the sensor.
+        lon             -- Longitude of the sensor.
+        rssi            -- Current reported RSSI WiFi signal strength.
+        adc             -- Current reported ADC voltage of the sensor.
+        uptime          -- Current uptime reported by the sensor.
+    """
+    pa_sensor_id: str
+    label: str
+    last_seen: datetime
+    last_update: datetime
+    readings: dict = field(default_factory=dict)
+    device_location: str = 'unknown'
+    version: str = 'unknown'
+    type: str = 'unknown'
+    lat: Optional[float] = None
+    lon: Optional[float] = None
+    rssi: float = 0
+    adc: float = 0
+    uptime: int = 0
 
 
 @dataclass

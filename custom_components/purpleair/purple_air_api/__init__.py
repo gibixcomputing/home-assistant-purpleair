@@ -15,7 +15,10 @@ from .exceptions import (
     PurpleAirApiStatusError,
     PurpleAirApiUrlError,
 )
-from .model import PurpleAirApiConfigEntry
+from .model import (
+    EpaAvgValueCache,
+    PurpleAirApiConfigEntry,
+)
 from .util import (
     add_aqi_calculations,
     build_nodes,
@@ -31,6 +34,8 @@ class PurpleAirApi:
 
     nodes: Dict[str, PurpleAirApiConfigEntry]
     session: ClientSession
+    _api_issues: bool
+    _cache: EpaAvgValueCache
 
     def __init__(self, session: ClientSession):
         self.nodes = {}

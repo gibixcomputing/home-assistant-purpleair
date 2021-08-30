@@ -107,7 +107,7 @@ class PurpleAirSensor(CoordinatorEntity):  # pylint: disable=too-many-instance-a
     config: PurpleAirConfigEntry
     coordinator: DataUpdateCoordinator
     entity_description: PurpleAirSensorEntityDescription
-    node_id: str
+    pa_sensor_id: str
 
     def __init__(
         self,
@@ -127,7 +127,7 @@ class PurpleAirSensor(CoordinatorEntity):  # pylint: disable=too-many-instance-a
         self.config = config
         self.coordinator = coordinator
         self.entity_description = description
-        self.node_id = config.node_id
+        self.pa_sensor_id = config.node_id
 
         self._warn_readings = False
         self._warn_stale = False
@@ -136,20 +136,20 @@ class PurpleAirSensor(CoordinatorEntity):  # pylint: disable=too-many-instance-a
     def available(self):
         """Gets whether the sensor is available."""
 
-        node = self.coordinator.data.get(self.node_id)
-        if not node:
+        pa_sensor = self.coordinator.data.get(self.pa_sensor_id)
+        if not pa_sensor:
             return False
 
         now = dt.utcnow()
-        diff = now - node['last_update']
+        diff = now - pa_sensor.last_update
 
         if diff.seconds > 5400:
             if self.entity_description.primary and not self._warn_stale:
                 _LOGGER.warning(
                     'PurpleAir Sensor "%s" (%s) has not sent data over 90 mins. Last update was %s',
                     self.config.title,
-                    self.node_id,
-                    dt.as_local(node['last_update'])
+                    self.pa_sensor_id,
+                    dt.as_local(pa_sensor.last_update)
                 )
                 self._warn_stale = True
 
@@ -160,7 +160,7 @@ class PurpleAirSensor(CoordinatorEntity):  # pylint: disable=too-many-instance-a
                 _LOGGER.warning(
                     'PurpleAir Sensor "%s" (%s) is returning invalid data',
                     self.config.title,
-                    self.node_id
+                    self.pa_sensor_id
                 )
                 self._warn_readings = True
 
@@ -174,7 +174,7 @@ class PurpleAirSensor(CoordinatorEntity):  # pylint: disable=too-many-instance-a
     def device_info(self):
         """Gets the device information this sensor is attached to."""
         return {
-            'identifiers': {(DOMAIN, self.node_id)},
+            'identifiers': {(DOMAIN, self.pa_sensor_id)},
             'default_name': self.config.title,
             'default_manufacturer': 'PurpleAir',
             'default_model': 'unknown',
@@ -184,8 +184,8 @@ class PurpleAirSensor(CoordinatorEntity):  # pylint: disable=too-many-instance-a
     def extra_state_attributes(self):
         """Gets extra data about the primary sensor (AQI)."""
 
-        node = self.coordinator.data.get(self.node_id)
-        if not node:
+        pa_sensor = self.coordinator.data.get(self.pa_sensor_id)
+        if not pa_sensor:
             return None
 
         confidence = self._get_confidence()
@@ -196,17 +196,17 @@ class PurpleAirSensor(CoordinatorEntity):  # pylint: disable=too-many-instance-a
             return None
 
         attrs = {
-            'last_seen': dt.as_local(node['last_seen']),
-            'last_update': dt.as_local(node['last_update']),
-            'device_location': node['device_location'],
-            'adc': node['adc'],
-            'rssi': node['rssi'],
-            'uptime': node['uptime'],
+            'last_seen': dt.as_local(pa_sensor.last_seen),
+            'last_update': dt.as_local(pa_sensor.last_update),
+            'device_location': pa_sensor.device_location,
+            'adc': pa_sensor.adc,
+            'rssi': pa_sensor.rssi,
+            'uptime': pa_sensor.uptime,
         }
 
-        if node['lat'] != 0 and node['lon'] != 0:
-            attrs[ATTR_LATITUDE] = node['lat']
-            attrs[ATTR_LONGITUDE] = node['lon']
+        if pa_sensor.lat and pa_sensor.lon:
+            attrs[ATTR_LATITUDE] = pa_sensor.lat
+            attrs[ATTR_LONGITUDE] = pa_sensor.lon
 
         if confidence:
             attrs['confidence'] = confidence
@@ -234,5 +234,5 @@ class PurpleAirSensor(CoordinatorEntity):  # pylint: disable=too-many-instance-a
         return readings.get(key) if readings else None
 
     def _get_readings(self):
-        node = self.coordinator.data.get(self.node_id)
-        return node.get('readings') if node else None
+        pa_sensor = self.coordinator.data.get(self.pa_sensor_id)
+        return pa_sensor.readings
