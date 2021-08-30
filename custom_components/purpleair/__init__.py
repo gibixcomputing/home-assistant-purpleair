@@ -1,3 +1,4 @@
+# pylint: disable=unused-argument
 """The PurpleAir integration."""
 from datetime import timedelta
 import asyncio

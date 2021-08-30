@@ -1,3 +1,4 @@
+# pylint: disable=too-few-public-methods
 """Config flow for Purple Air integration."""
 import logging
 import voluptuous as vol

@@ -16,7 +16,12 @@ from .exceptions import (
     PurpleAirApiUrlError,
 )
 from .model import PurpleAirApiConfigEntry
-from .util import build_nodes, calculate_sensor_values
+from .util import (
+    add_aqi_calculations,
+    build_nodes,
+    calculate_sensor_values,
+    create_epa_value_cache,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,6 +37,7 @@ class PurpleAirApi:
         self.session = session
 
         self._api_issues = False
+        self._cache = create_epa_value_cache()
 
     def get_node_count(self):
         """Gets the number of nodes registered with the API."""
@@ -82,6 +88,10 @@ class PurpleAirApi:
         nodes = build_nodes(results)
 
         calculate_sensor_values(nodes)
+        add_aqi_calculations(nodes, cache=self._cache)
+
+        for (node_id, node) in nodes.items():
+            _LOGGER.debug('(%s): results: %s', node_id, node)
 
         return nodes
 

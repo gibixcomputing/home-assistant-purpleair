@@ -1,7 +1,10 @@
 """Provides utility functions for the PurpleAir API."""
+from __future__ import annotations
+
 import logging
-from datetime import datetime, timezone
-from typing import Dict
+from collections import defaultdict, deque
+from datetime import datetime, timedelta, timezone
+from math import fsum, isnan, nan
 
 from .const import (
     AQI_BREAKPOINTS,
@@ -16,77 +19,74 @@ from .const import (
     PM_PROPERTIES,
 )
 
-from .model import EpaAvgValues
+from .model import EpaAvgValue, EpaAvgValueCache
 
 _LOGGER = logging.getLogger(__name__)
 
 WARNED_NODES = []
 
-EPA_AVG_DATA: Dict[str, EpaAvgValues] = {}
 
-
-def add_aqi_calculations(node, readings):
+def add_aqi_calculations(nodes, *, cache: EpaAvgValueCache = None):
     """
     This adds the custom AQI properties to the readings, calculating them based off the corrections
     and breakpoints, providing a few variations depending what is needed.
     """
 
-    confidence = readings.get(f'{API_ATTR_PM25}_confidence')
-    if pm25atm := readings.get(API_ATTR_PM25):
-        readings[API_ATTR_PM25_AQI_RAW] = calc_aqi(pm25atm, 'pm2_5')
-        readings[f'{API_ATTR_PM25_AQI_RAW}_confidence'] = confidence
+    if not cache:
+        cache = getattr(add_aqi_calculations, 'cache', None)
+        if not cache:
+            _LOGGER.debug('using global cache for EPA values')
+            cache = create_epa_value_cache()
+            add_aqi_calculations.cache = cache
 
-    # get the pm2.5 CF=1 reading. This should already be averaged between A and B if healthy, or a
-    # single sensor if unhealthy.
-    pm25cf1 = readings.get(API_ATTR_PM25_CF1)
-    humidity = readings.get(API_ATTR_HUMIDITY)
-    epa_avg = EPA_AVG_DATA.get(node)
+    for node_id in nodes:
+        readings = nodes[node_id]['readings']
 
-    if not epa_avg:
-        epa_avg = {'hum': [], 'pm25': []}
-        EPA_AVG_DATA[node] = epa_avg
+        confidence = readings.get(f'{API_ATTR_PM25}_confidence')
+        if pm25atm := readings.get(API_ATTR_PM25):
+            readings[API_ATTR_PM25_AQI_RAW] = calc_aqi(pm25atm, 'pm2_5')
+            readings[f'{API_ATTR_PM25_AQI_RAW}_confidence'] = confidence
 
-    # if we have the PM2.5 CF=1 and humidity data, we can calculate AQI using the EPA corrections
-    # that were identified to better calibrate PurpleAir sensors to the EPA NowCast AQI formula.
-    # This was identified during the 2020 wildfire season and better represents AQI with wildfire
-    # smoke for the unhealthy for sensitive groups/unhealthy for everyone AQI breakpoints. Unlike
-    # the raw AQI sensor, this is averaged over the last hour. For simplicity, this is applied here
-    # as a rolling hour average and provides instant results as readings are provided. No attempt is
-    # made to handle missed readings and assumes readings are updated every 5 minutes.
-    #
-    # The formula is identified as:
-    #   PM2.5 corrected= 0.534*[PA_cf1(avgAB)] - 0.0844*RH +5.604
-    if pm25cf1 and humidity:
-        epa_avg['hum'].append(humidity)
-        epa_avg['pm25'].append(pm25cf1)
+        # get the pm2.5 CF=1 reading. This should already be averaged between A and B if healthy, or
+        # a single sensor if unhealthy.
+        pm25cf1 = readings.get(API_ATTR_PM25_CF1, nan)
+        humidity = readings.get(API_ATTR_HUMIDITY, nan)
 
-        # prune the lists to the last 12 entries (1 reading every 5 minutes = 12 per hour)
-        while len(epa_avg['hum']) > 12:
-            epa_avg['hum'].pop(0)
+        # if we have the PM2.5 CF=1 and humidity data, we can calculate AQI using the EPA
+        # corrections that were identified to better calibrate PurpleAir sensors to the EPA NowCast
+        # AQI formula. This was identified during the 2020 wildfire season and better represents AQI
+        # with wildfire smoke for the unhealthy for sensitive groups/unhealthy for everyone AQI
+        # breakpoints. Unlike the raw AQI sensor, this is averaged over the last hour. For
+        # simplicity, this is applied here as a rolling hour average and provides instant results as
+        # readings are provided. Readings over an hour old will be removed from the cache.
+        #
+        # The formula is identified as: PM2.5 corrected= 0.534*[PA_cf1(avgAB)] - 0.0844*RH +5.604
+        if not isnan(pm25cf1) and not isnan(humidity):
+            epa_avg = cache[node_id]
+            epa_avg.append(EpaAvgValue(hum=humidity, pm25=pm25cf1))
 
-        while len(epa_avg['pm25']) > 12:
-            epa_avg['pm25'].pop(0)
+            _clean_expired_cache_entries(node_id, nodes[node_id], epa_avg)
 
-        humidity_avg = sum(epa_avg['hum']) / len(epa_avg['hum'])
-        pm25cf1_avg = sum(epa_avg['pm25']) / len(epa_avg['pm25'])
+            humidity_avg = round(fsum(v.hum for v in epa_avg) / len(epa_avg), 5)
+            pm25cf1_avg = round(fsum(v.pm25 for v in epa_avg) / len(epa_avg), 5)
 
-        pm25_corrected = (0.534 * pm25cf1_avg) - (0.0844 * humidity_avg) + 5.604
-        pm25_corrected_aqi = calc_aqi(pm25_corrected, 'pm2_5')
+            pm25_corrected = round((0.534 * pm25cf1_avg) - (0.0844 * humidity_avg) + 5.604, 1)
+            pm25_corrected_aqi = calc_aqi(pm25_corrected, 'pm2_5')
 
-        _LOGGER.debug(
-            '(%s): EPA correction: (pm25: %s, hum: %s, corrected: %s, aqi: %s)',
-            node, pm25cf1_avg, humidity_avg, pm25_corrected, pm25_corrected_aqi
-        )
+            _LOGGER.debug(
+                '(%s): EPA correction: (pm25: %s, hum: %s, corrected: %s, aqi: %s)',
+                node_id, pm25cf1_avg, humidity_avg, pm25_corrected, pm25_corrected_aqi
+            )
 
-        readings[API_ATTR_PM25_AQI] = pm25_corrected_aqi
-        aqi_status = 'ready'
+            readings[API_ATTR_PM25_AQI] = pm25_corrected_aqi
+            aqi_status = 'ready'
 
-        count = len(epa_avg['pm25'])
-        if count < 12:
-            aqi_status = f'initializing ({(12 - count) * 5} mins left)'
+            count = len(epa_avg)
+            if count < 12:
+                aqi_status = f'initializing ({(12 - count) * 5} mins left)'
 
-        readings[f'{API_ATTR_PM25_AQI}_confidence'] = confidence
-        readings[f'{API_ATTR_PM25_AQI}_aqi_status'] = aqi_status
+            readings[f'{API_ATTR_PM25_AQI}_confidence'] = confidence
+            readings[f'{API_ATTR_PM25_AQI}_aqi_status'] = aqi_status
 
 
 def apply_corrections(readings):
@@ -225,13 +225,22 @@ def calculate_sensor_values(nodes):
                     readings[prop] = None
 
         apply_corrections(readings)
-        add_aqi_calculations(node, readings)
 
         # clean up intermediate results
         readings.pop('A', None)
         readings.pop('B', None)
 
-        _LOGGER.debug('(%s): results: %s', node, readings)
+
+def clear_node_warning(node: str):
+    """Removes a node from the warning node list."""
+    if node in WARNED_NODES:
+        WARNED_NODES.remove(node)
+
+
+def create_epa_value_cache() -> EpaAvgValueCache:
+    """Creaets a new EPA value cache."""
+    cache = defaultdict(lambda: deque(maxlen=12))
+    return cache
 
 
 def get_pm_reading(node: str, prop: str, a_value: float, b_value: float, label: str):
@@ -267,12 +276,6 @@ def get_pm_reading(node: str, prop: str, a_value: float, b_value: float, label: 
     return (value, confidence)
 
 
-def clear_node_warning(node: str):
-    """Removes a node from the warning node list."""
-    if node in WARNED_NODES:
-        WARNED_NODES.remove(node)
-
-
 def warn_node_channel_bad(node: str, label: str, prop: str, channel: str):
     """
     Logs a warning if a node is returning bad data for a sensor channel, if the node has not already
@@ -286,3 +289,14 @@ def warn_node_channel_bad(node: str, label: str, prop: str, channel: str):
         'PurpleAir Sensor "%s" (%s) is sending bad readings for channel %s data point %s',
         label, node, channel, prop
     )
+
+
+def _clean_expired_cache_entries(node_id: str, node, epa_avg: deque[EpaAvgValue]):
+    """Cleans out any old cache entries older than an hour."""
+    hour_ago = datetime.utcnow() - timedelta(seconds=3600)
+    expired_count = range(sum([1 for v in epa_avg if v.timestamp < hour_ago]))
+    if expired_count:
+        _LOGGER.info('PuprleAir Sensor "%s" (%s) EPA readings contained %s old entries in cache',
+                     node['label'], node_id, expired_count)
+        for _ in range(expired_count):
+            epa_avg.popleft()

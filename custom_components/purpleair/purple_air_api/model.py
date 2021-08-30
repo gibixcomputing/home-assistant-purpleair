@@ -1,6 +1,9 @@
 """Provides models for the PurpleAir API."""
-from dataclasses import dataclass
-from typing import List, TypedDict
+from __future__ import annotations
+
+from collections import deque
+from dataclasses import dataclass, field
+from datetime import datetime
 
 
 @dataclass
@@ -35,12 +38,18 @@ class AqiBreakpoint:
     aqi_high: float
 
 
-class EpaAvgValues(TypedDict):
-    """Provides guidance for the data in the EPA_AVG_DATA dictionary.
+@dataclass
+class EpaAvgValue:
+    """Provides values for the EPA value cache.
 
     Attributes:
         hum  -- List of last humidity readings
         pm25 -- List of last PM2.5 CF=1 readings
+        timestamp -- Date the value reading was created
     """
-    hum: List[float]
-    pm25: List[float]
+    hum: float
+    pm25: float
+    timestamp: datetime = field(default_factory=datetime.utcnow)
+
+
+EpaAvgValueCache = dict[str, deque[EpaAvgValue]]

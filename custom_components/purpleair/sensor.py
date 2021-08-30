@@ -97,7 +97,7 @@ async def async_setup_entry(
     async_schedule_add_entities(sensors, False)
 
 
-class PurpleAirSensor(CoordinatorEntity):
+class PurpleAirSensor(CoordinatorEntity):  # pylint: disable=too-many-instance-attributes
     """Provides the calculated Air Quality Index as a separate sensor for Home Assistant."""
 
     _attr_attribution: Final = 'Data provided by PurpleAir'

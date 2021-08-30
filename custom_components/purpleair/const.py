@@ -1,3 +1,4 @@
+# pylint: disable=unexpected-keyword-arg
 """Constants for the Purple Air integration."""
 from __future__ import annotations
 from typing import Final
