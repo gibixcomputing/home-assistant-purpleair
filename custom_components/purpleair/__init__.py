@@ -48,7 +48,7 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 
         config_entry.data = {**data}
 
-        config_entry.version = 2
+        config_entry.version = 3
 
     _LOGGER.debug('Migration to version %s successful', config_entry.version)
     return True
