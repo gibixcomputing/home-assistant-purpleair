@@ -4,7 +4,7 @@ from __future__ import annotations
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Union
 
 
 @dataclass
@@ -21,6 +21,104 @@ class PurpleAirApiConfigEntry:
     title: str
     hidden: bool
     key: Optional[str] = None
+
+
+@dataclass
+class PurpleAirSensorReading:  # pylint: disable=too-many-instance-attributes
+    """Represents individual sensor data properties from a PurpleAir Sensor.
+
+    Attributes:
+        humidity          -- Corrected humidity reading
+        pm10_0_atm        -- Current particulate matter 10.0 reading
+        pm1_0_atm         -- Current particulate matter 1.0 reading
+        pm2_5_atm         -- Current particulate matter 2.5 reading
+        pm2_5_atm_aqi     -- AQI calculated using EPA corrected wildfire formula using PM 2.5 CF=1
+        pm2_5_atm_aqi_raw -- AQI calculated using most recent PM 2.5 atmosphere reading
+        pm2_5_cf_1        -- PM 2.5 reading using CF=1
+        pressure          -- Pressure from the sensor in millibars (hPa)
+        temp_f            -- Corrected temperature reading
+
+    Internal Attributes:
+        channels   -- Individual channel readings, used during processing
+        confidence -- Confidence values for the given readings (good, questionable, single, invalid)
+        status     -- Status calculations for EPA AQI sensors
+    """
+
+    # sensor data
+    humidity: Optional[float] = None
+    pm10_0_atm: Optional[float] = None
+    pm1_0_atm: Optional[float] = None
+    pm2_5_atm: Optional[float] = None
+    pm2_5_atm_aqi: Optional[int] = None
+    pm2_5_atm_aqi_raw: Optional[int] = None
+    pm2_5_cf_1: Optional[float] = None
+    pressure: Optional[float] = None
+    temp_f: Optional[float] = None
+
+    # additional sensor information
+    confidence: dict[str, str] = field(default_factory=dict)
+    status: dict[str, str] = field(default_factory=dict)
+
+    # temporary sensor data
+    channels: dict[str, dict[str, float]] = field(default_factory=dict)
+
+    def both_channels_have_data(self) -> bool:
+        """Determines if both internal channel dictionaries have usable values."""
+        channel_a = self.channels.get('A', {})
+        channel_b = self.channels.get('B', {})
+        a_has_data = bool(channel_a and not all(v is None for v in channel_a.values()))
+        b_has_data = bool(channel_b and not all(v is None for v in channel_b.values()))
+
+        return a_has_data and b_has_data
+
+    def clear_temporary_data(self):
+        """Clears the temporary channel readings."""
+        self.channels.clear()
+
+    def get_channel(self, channel) -> dict[str, float]:
+        """
+        Gets the internal channel readings dictionary for channel A or B. Raises an AttributeError
+        if the channel is not in the set('A', 'B').
+        """
+        if channel not in ['A', 'B']:
+            raise AttributeError('Unsupported channel requested, must be "A" or "B"')
+
+        data = self.channels.get(channel)
+        if not data:
+            data = {}
+            self.channels[channel] = data
+
+        return data
+
+    def get_confidence(self, attr: str) -> str:
+        """Gets the given sensor confidence value."""
+        return self.confidence.get(attr, '')
+
+    def get_status(self, attr: str) -> str:
+        """Gets the given sensor attribute status."""
+        return self.status.get(attr, '')
+
+    def get_value(self, attr: str) -> Union[int, float]:
+        """Gets the given sensor attribute reading."""
+        return getattr(self, attr)
+
+    def set_status(self, attr: str, status: str):
+        """Sets the status for the given sensor attribute."""
+        self.status[attr] = status
+
+    def set_value(
+            self, attr: str, value: Optional[Union[int, float]], confidence: Optional[str] = None
+    ):
+        """
+        Sets the computed value for the given sensor attribute with an optional value and confidence
+        rating. An AttributeError is raised if the attribute name does not exist.
+        """
+        if not hasattr(self, attr):
+            raise AttributeError(attr)
+
+        setattr(self, attr, value)
+        if confidence:
+            self.confidence[attr] = confidence
 
 
 @dataclass
@@ -46,7 +144,7 @@ class PurpleAirSensorData:  # pylint: disable=too-many-instance-attributes
     label: str
     last_seen: datetime
     last_update: datetime
-    readings: dict = field(default_factory=dict)
+    readings: PurpleAirSensorReading = field(default_factory=PurpleAirSensorReading)
     device_location: str = 'unknown'
     version: str = 'unknown'
     type: str = 'unknown'
@@ -88,3 +186,4 @@ class EpaAvgValue:
 
 
 EpaAvgValueCache = dict[str, deque[EpaAvgValue]]
+PurpleAirSensorDataDict = dict[str, PurpleAirSensorData]

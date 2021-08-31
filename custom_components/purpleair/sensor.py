@@ -82,7 +82,7 @@ async def async_setup_entry(
         sensors.append(PurpleAirSensor(config, description, coordinator))
 
     # register this entry in the API list
-    api.register_node(config)
+    api.register_node(config.node_id, config.title, config.hidden, config.key)
 
     # check for the number of registered nodes during startup to only request an update
     # once all expected nodes are registered.
@@ -212,7 +212,7 @@ class PurpleAirSensor(CoordinatorEntity):  # pylint: disable=too-many-instance-a
             attrs['confidence'] = confidence
 
         readings = self._get_readings()
-        if aqi_status := readings.get(f'{self.entity_description.key}_aqi_status'):
+        if aqi_status := readings.get_status(self.entity_description.key):
             attrs['aqi_status'] = aqi_status
 
         return attrs
@@ -225,13 +225,11 @@ class PurpleAirSensor(CoordinatorEntity):  # pylint: disable=too-many-instance-a
         if not readings:
             return None
 
-        return readings.get(self.entity_description.key)
+        return readings.get_value(self.entity_description.key)
 
     def _get_confidence(self):
         readings = self._get_readings()
-        key = f'{self.entity_description.key}_confidence'
-
-        return readings.get(key) if readings else None
+        return readings.get_confidence(self.entity_description.key)
 
     def _get_readings(self):
         pa_sensor = self.coordinator.data.get(self.pa_sensor_id)

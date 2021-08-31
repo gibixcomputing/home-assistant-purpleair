@@ -5,7 +5,7 @@ Provides an API capable of communicating with the free PurpleAir service.
 import asyncio
 import logging
 import re
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from aiohttp import ClientSession
 
@@ -21,7 +21,7 @@ from .model import (
 )
 from .util import (
     add_aqi_calculations,
-    build_nodes,
+    build_sensors,
     calculate_sensor_values,
     create_epa_value_cache,
 )
@@ -48,23 +48,25 @@ class PurpleAirApi:
         """Gets the number of nodes registered with the API."""
         return len(self.nodes)
 
-    def register_node(self, node: PurpleAirApiConfigEntry):
+    def register_node(self, pa_sensor_id: str, title: str, hidden: bool, key: Optional[str] = None):
         """
         Registers a node with this instance. This will schedule a periodic poll against PurpleAir if
         this is the first sensor added and schedule an immediate API request after 5 seconds.
         """
 
-        if node.node_id in self.nodes:
-            _LOGGER.debug('detected duplicate registration: %s', node.node_id)
+        if pa_sensor_id in self.nodes:
+            _LOGGER.debug('detected duplicate registration: %s', pa_sensor_id)
             return
 
-        self.nodes[node.node_id] = PurpleAirApiConfigEntry(
-            node_id=node.node_id,
-            title=node.title,
-            key=node.key,
-            hidden=node.hidden
+        sensor = PurpleAirApiConfigEntry(
+            node_id=pa_sensor_id,
+            title=title,
+            key=key,
+            hidden=hidden
         )
-        _LOGGER.debug('registered new node: %s', node.node_id)
+
+        self.nodes[pa_sensor_id] = sensor
+        _LOGGER.debug('registered new node: %s', sensor)
 
     def unregister_node(self, node_id):
         """
@@ -90,15 +92,16 @@ class PurpleAirApi:
         urls = self._build_api_urls(public_nodes, private_nodes)
         results = await self._fetch_data(urls)
 
-        nodes = build_nodes(results)
+        sensors = build_sensors(results)
 
-        calculate_sensor_values(nodes)
-        add_aqi_calculations(nodes, cache=self._cache)
+        calculate_sensor_values(sensors)
+        add_aqi_calculations(sensors, cache=self._cache)
 
-        for (node_id, node) in nodes.items():
-            _LOGGER.debug('(%s): results: %s', node_id, node)
+        if _LOGGER.isEnabledFor(logging.DEBUG):
+            for sensor in sensors.values():
+                _LOGGER.debug('(%s) sensor data: %s', sensor.pa_sensor_id, sensor)
 
-        return nodes
+        return sensors
 
     def _build_api_urls(self, public_nodes, private_nodes):
         """
