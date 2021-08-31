@@ -1,5 +1,6 @@
 """Constants for the PurpleAir API."""
 from __future__ import annotations
+
 from typing import Final
 
 from .model import AqiBreakpoint
@@ -37,6 +38,6 @@ MAX_PM_READING: Final = 1000
 
 PM_PROPERTIES: Final = [API_ATTR_PM25_CF1, API_ATTR_PM1, API_ATTR_PM25, API_ATTR_PM10]
 
-PRIVATE_URL: Final = 'https://www.purpleair.com/json?show={nodes}&key={key}'
+PRIVATE_URL: Final = 'https://www.purpleair.com/json?show={sensors}&key={key}'
 
-PUBLIC_URL: Final = 'https://www.purpleair.com/json?show={nodes}'
+PUBLIC_URL: Final = 'https://www.purpleair.com/json?show={sensors}'

@@ -12,19 +12,19 @@ class PurpleAirApiConfigEntry:
     """Describes a configuration entry for the PurpleAir API.
 
     Attributes:
-        node_id -- The ID of the sensor being configured
-        title   -- The title of the sensor
-        hidden  -- Flag indicating whether the sensor is private or public
-        key     -- Key used when retrieving sensor data. Required if the hidden attribute is True.
+        pa_sensor_id -- The ID of the sensor being configured
+        title        -- The title of the sensor
+        hidden       -- Flag indicating whether the sensor is private or public
+        key          -- Key used when retrieving sensor data. Must be provided if hidden is True.
     """
-    node_id: str
+    pa_sensor_id: str
     title: str
     hidden: bool
     key: Optional[str] = None
 
 
 @dataclass
-class PurpleAirSensorReading:  # pylint: disable=too-many-instance-attributes
+class PurpleAirApiSensorReading:  # pylint: disable=too-many-instance-attributes
     """Represents individual sensor data properties from a PurpleAir Sensor.
 
     Attributes:
@@ -122,7 +122,7 @@ class PurpleAirSensorReading:  # pylint: disable=too-many-instance-attributes
 
 
 @dataclass
-class PurpleAirSensorData:  # pylint: disable=too-many-instance-attributes
+class PurpleAirApiSensorData:  # pylint: disable=too-many-instance-attributes
     """Represents parsed individual sensor information from the PurpleAir API.
 
     Attributes:
@@ -144,7 +144,7 @@ class PurpleAirSensorData:  # pylint: disable=too-many-instance-attributes
     label: str
     last_seen: datetime
     last_update: datetime
-    readings: PurpleAirSensorReading = field(default_factory=PurpleAirSensorReading)
+    readings: PurpleAirApiSensorReading = field(default_factory=PurpleAirApiSensorReading)
     device_location: str = 'unknown'
     version: str = 'unknown'
     type: str = 'unknown'
@@ -186,4 +186,4 @@ class EpaAvgValue:
 
 
 EpaAvgValueCache = dict[str, deque[EpaAvgValue]]
-PurpleAirSensorDataDict = dict[str, PurpleAirSensorData]
+PurpleAirApiSensorDataDict = dict[str, PurpleAirApiSensorData]

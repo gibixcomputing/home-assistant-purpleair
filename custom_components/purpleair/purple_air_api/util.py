@@ -18,17 +18,17 @@ from .const import (
 from .model import (
     EpaAvgValue,
     EpaAvgValueCache,
-    PurpleAirSensorData,
-    PurpleAirSensorDataDict,
-    PurpleAirSensorReading,
+    PurpleAirApiSensorData,
+    PurpleAirApiSensorDataDict,
+    PurpleAirApiSensorReading,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
-WARNED_NODES: list[str] = []
+WARNED_SENSORS: list[str] = []
 
 
-def add_aqi_calculations(pa_sensors: PurpleAirSensorDataDict, *, cache: EpaAvgValueCache = None):
+def add_aqi_calculations(pa_sensors: PurpleAirApiSensorDataDict, *, cache: EpaAvgValueCache = None):
     """
     This adds the custom AQI properties to the readings, calculating them based off the corrections
     and breakpoints, providing a few variations depending what is needed.
@@ -85,7 +85,7 @@ def add_aqi_calculations(pa_sensors: PurpleAirSensorDataDict, *, cache: EpaAvgVa
             readings.set_status(API_ATTR_PM25_AQI, aqi_status)
 
 
-def apply_corrections(readings: PurpleAirSensorReading):
+def apply_corrections(readings: PurpleAirApiSensorReading):
     """
     The sensors for temperature and humidity are known to be slightly outside of real values, this
     will apply a blanket correction of subtracting 8°F from the temperature and adding 4% to the
@@ -112,18 +112,18 @@ def apply_corrections(readings: PurpleAirSensorReading):
                       humidity, readings.humidity)
 
 
-def build_sensors(results) -> dict[str, PurpleAirSensorData]:
+def build_sensors(results) -> dict[str, PurpleAirApiSensorData]:
     """
     Builds a dictionary of PurpleAir sensors and extracts available data from the JSON result array
     returned from the PurpleAir API.
     """
 
-    sensors: dict[str, PurpleAirSensorData] = {}
+    sensors: dict[str, PurpleAirApiSensorData] = {}
     for result in results:
         pa_sensor_id = str(result.get('ParentID', result['ID']))
 
         if pa_sensor_id not in sensors:
-            sensors[pa_sensor_id] = PurpleAirSensorData(
+            sensors[pa_sensor_id] = PurpleAirApiSensorData(
                 pa_sensor_id=pa_sensor_id,
                 label=str(result.get('Label')),
                 last_seen=datetime.fromtimestamp(result['LastSeen'], timezone.utc),
@@ -176,14 +176,14 @@ def calc_aqi(value, index):
     return round((aqi_range / pm_range) * aqi_c + aqi_bp.aqi_low)
 
 
-def calculate_sensor_values(sensors: dict[str, PurpleAirSensorData]):
+def calculate_sensor_values(sensors: dict[str, PurpleAirApiSensorData]):
     """
-    Mutates the provided node dictionary in place by iterating over the raw sensor data and provides
-    a normalized view and adds any calculated properties.
+    Mutates the provided sensor dictionary in place by iterating over the raw sensor data and
+    provides a normalized view and adds any calculated properties.
     """
 
     for sensor in sensors.values():
-        readings: PurpleAirSensorReading = sensor.readings
+        readings: PurpleAirApiSensorReading = sensor.readings
         _LOGGER.debug('(%s): processing data: %s', sensor.pa_sensor_id, readings.channels)
 
         channel_a = readings.get_channel('A')
@@ -216,10 +216,10 @@ def calculate_sensor_values(sensors: dict[str, PurpleAirSensorData]):
         readings.clear_temporary_data()
 
 
-def clear_sensor_warning(pa_sensor: PurpleAirSensorData):
-    """Removes a node from the warned sensor list."""
-    if pa_sensor.pa_sensor_id in WARNED_NODES:
-        WARNED_NODES.remove(pa_sensor.pa_sensor_id)
+def clear_sensor_warning(pa_sensor: PurpleAirApiSensorData):
+    """Removes a sensor from the warned sensor list."""
+    if pa_sensor.pa_sensor_id in WARNED_SENSORS:
+        WARNED_SENSORS.remove(pa_sensor.pa_sensor_id)
 
 
 def create_epa_value_cache() -> EpaAvgValueCache:
@@ -228,7 +228,7 @@ def create_epa_value_cache() -> EpaAvgValueCache:
     return cache
 
 
-def get_pm_reading(pa_sensor: PurpleAirSensorData, prop: str, a_value: float, b_value: float):
+def get_pm_reading(pa_sensor: PurpleAirApiSensorData, prop: str, a_value: float, b_value: float):
     """Gets a value and confidence level for the given PM reading."""
 
     a_valid = a_value < MAX_PM_READING
@@ -261,22 +261,22 @@ def get_pm_reading(pa_sensor: PurpleAirSensorData, prop: str, a_value: float, b_
     return (value, confidence)
 
 
-def warn_sensor_channel_bad(pa_sensor: PurpleAirSensorData, prop: str, channel: str):
+def warn_sensor_channel_bad(pa_sensor: PurpleAirApiSensorData, prop: str, channel: str):
     """
-    Logs a warning if a sensor is returning bad data for a collector channel, if the node has not
+    Logs a warning if a sensor is returning bad data for a collector channel, if the sensor has not
     already logged a warning.
     """
-    if pa_sensor.pa_sensor_id in WARNED_NODES:
+    if pa_sensor.pa_sensor_id in WARNED_SENSORS:
         return
 
-    WARNED_NODES.append(pa_sensor.pa_sensor_id)
+    WARNED_SENSORS.append(pa_sensor.pa_sensor_id)
     _LOGGER.warning(
         'PurpleAir Sensor "%s" (%s) is sending bad readings for channel %s data point %s',
         pa_sensor.label, pa_sensor.pa_sensor_id, channel, prop
     )
 
 
-def _clean_expired_cache_entries(pa_sensor: PurpleAirSensorData, epa_avg: deque[EpaAvgValue]):
+def _clean_expired_cache_entries(pa_sensor: PurpleAirApiSensorData, epa_avg: deque[EpaAvgValue]):
     """Cleans out any old cache entries older than an hour."""
     hour_ago = datetime.utcnow() - timedelta(seconds=3600)
     expired_count = sum([1 for v in epa_avg if v.timestamp < hour_ago])

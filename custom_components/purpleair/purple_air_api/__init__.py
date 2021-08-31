@@ -1,11 +1,10 @@
-"""
-Provides an API capable of communicating with the free PurpleAir service.
-"""
+"""Provides an API capable of communicating with the free PurpleAir service. """
+from __future__ import annotations
 
 import asyncio
 import logging
 import re
-from typing import Dict, List, Optional
+from typing import Optional
 
 from aiohttp import ClientSession
 
@@ -32,64 +31,63 @@ _LOGGER = logging.getLogger(__name__)
 class PurpleAirApi:
     """Provides the API capable of communicating with PurpleAir."""
 
-    nodes: Dict[str, PurpleAirApiConfigEntry]
+    sensors: dict[str, PurpleAirApiConfigEntry]
     session: ClientSession
     _api_issues: bool
     _cache: EpaAvgValueCache
 
     def __init__(self, session: ClientSession):
-        self.nodes = {}
+        self.sensors = {}
         self.session = session
 
         self._api_issues = False
         self._cache = create_epa_value_cache()
 
-    def get_node_count(self):
-        """Gets the number of nodes registered with the API."""
-        return len(self.nodes)
+    def get_sensor_count(self):
+        """Gets the number of sensors registered with the API."""
+        return len(self.sensors)
 
-    def register_node(self, pa_sensor_id: str, title: str, hidden: bool, key: Optional[str] = None):
+    def register_sensor(
+            self, pa_sensor_id: str, title: str, hidden: bool, key: Optional[str] = None
+    ):
         """
-        Registers a node with this instance. This will schedule a periodic poll against PurpleAir if
-        this is the first sensor added and schedule an immediate API request after 5 seconds.
+        Registers a sensor with this instance. This will schedule a periodic poll against PurpleAir
+        if this is the first sensor added and schedule an immediate API request after 5 seconds.
         """
 
-        if pa_sensor_id in self.nodes:
+        if pa_sensor_id in self.sensors:
             _LOGGER.debug('detected duplicate registration: %s', pa_sensor_id)
             return
 
         sensor = PurpleAirApiConfigEntry(
-            node_id=pa_sensor_id,
+            pa_sensor_id=pa_sensor_id,
             title=title,
             key=key,
             hidden=hidden
         )
 
-        self.nodes[pa_sensor_id] = sensor
-        _LOGGER.debug('registered new node: %s', sensor)
+        self.sensors[pa_sensor_id] = sensor
+        _LOGGER.debug('registered new sensor: %s', sensor)
 
-    def unregister_node(self, node_id):
-        """
-        Unregisters a node from this instance and removes any associated data. If this is the last
-        registered node the periodic polling is shut down.
-        """
+    def unregister_sensor(self, pa_sensor_id: str):
+        """Unregisters a sensor from this instance and removes any associated data."""
 
-        if node_id not in self.nodes:
-            _LOGGER.debug('detected non-existent unregistration: %s', node_id)
+        if pa_sensor_id not in self.sensors:
+            _LOGGER.debug('detected non-existent unregistration: %s', pa_sensor_id)
             return
 
-        del self.nodes[node_id]
-        _LOGGER.debug('unregistered node: %s', node_id)
+        del self.sensors[pa_sensor_id]
+        _LOGGER.debug('unregistered sensor: %s', pa_sensor_id)
 
     async def update(self):
         """Main update process to query and update sensor data."""
 
-        public_nodes = [node_id for (node_id, data) in self.nodes.items() if not data.hidden]
-        private_nodes = [node_id for (node_id, data) in self.nodes.items() if data.hidden]
+        public_sensors = [s.pa_sensor_id for s in self.sensors.values() if not s.hidden]
+        private_sensors = [s.pa_sensor_id for s in self.sensors.values() if s.hidden]
 
-        _LOGGER.debug('public nodes: %s, private nodes: %s', public_nodes, private_nodes)
+        _LOGGER.debug('public sensors: %s, private sensors: %s', public_sensors, private_sensors)
 
-        urls = self._build_api_urls(public_nodes, private_nodes)
+        urls = self._build_api_urls(public_sensors, private_sensors)
         results = await self._fetch_data(urls)
 
         sensors = build_sensors(results)
@@ -103,36 +101,35 @@ class PurpleAirApi:
 
         return sensors
 
-    def _build_api_urls(self, public_nodes, private_nodes):
+    def _build_api_urls(self, public_sensors, private_sensors):
         """
-        Builds a list of URLs to query based off the provided public and private node lists,
+        Builds a list of URLs to query based off the provided public and private sensor lists,
         attempting to combine as many sensors in to as few API requests as possible.
         """
 
-        urls: List[str] = []
-        if private_nodes:
-            by_keys: Dict[str, str] = {}
-            for node_id in private_nodes:
-                node = self.nodes[node_id]
-                key = node.key
+        urls: list[str] = []
+        if private_sensors:
+            by_keys: dict[str, str] = {}
+            for pa_sensor_id in private_sensors:
+                key = self.sensors[pa_sensor_id].key
 
                 if key:
                     if key not in by_keys:
                         by_keys[key] = []
 
-                    by_keys[key].append(node_id)
+                    by_keys[key].append(pa_sensor_id)
 
             used_public = False
-            for key, private_nodes_for_key in by_keys.items():
-                nodes = private_nodes_for_key
+            for key, private_sensors_for_key in by_keys.items():
+                sensors = private_sensors_for_key
                 if not used_public:
-                    nodes += public_nodes
+                    sensors += public_sensors
                     used_public = True
 
-                urls.append(PRIVATE_URL.format(nodes='|'.join(nodes), key=key))
+                urls.append(PRIVATE_URL.format(sensors='|'.join(sensors), key=key))
 
-        elif public_nodes:
-            urls = [PUBLIC_URL.format(nodes='|'.join(public_nodes))]
+        elif public_sensors:
+            urls = [PUBLIC_URL.format(sensors='|'.join(public_sensors))]
 
         return urls
 
@@ -140,7 +137,7 @@ class PurpleAirApi:
         """Fetches data from the PurpleAir API endpoint."""
 
         if not urls:
-            _LOGGER.debug('no nodes provided')
+            _LOGGER.debug('no sensors provided')
             return []
 
         results = []
@@ -173,31 +170,31 @@ class PurpleAirApi:
         return results
 
 
-async def get_node_configuration(session: ClientSession, url: str):
+async def get_sensor_configuration(session: ClientSession, url: str) -> PurpleAirApiConfigEntry:
     """
-    Gets a configuration for the node at the  given PurpleAir URL. This string expects to see a URL
+    Gets a configuration for the sensor at the given PurpleAir URL. This string expects to see a URL
     in the following format:
 
-        https://www.purpleair.com/json?key={key}&show={node_id}
-        https://www.purpleair.com/sensorlist?key={key}&show={node_id}
+        https://www.purpleair.com/json?key={key}&show={pa_sensor_id}
+        https://www.purpleair.com/sensorlist?key={key}&show={pa_sensor_id}
     """
 
     if not re.match(r'.*purpleair.*', url, re.IGNORECASE):
         raise PurpleAirApiUrlError('Provided URL is invalid', url)
 
     key_match = re.match(r'.*key=(?P<key>[^&]+)', url)
-    node_match = re.match(r'.*show=(?P<node_id>[^&]+)', url)
+    sensor_match = re.match(r'.*show=(?P<pa_sensor_id>[^&]+)', url)
 
     key = key_match.group('key') if key_match else None
-    node_id = node_match.group('node_id') if node_match else None
+    pa_sensor_id = sensor_match.group('pa_sensor_id') if sensor_match else None
 
-    if not key or not node_id:
-        raise PurpleAirApiUrlError('Unable to get node and/or key from URL', url)
+    if not key or not pa_sensor_id:
+        raise PurpleAirApiUrlError('Unable to get sensor id and/or key from URL', url)
 
-    api_url = PRIVATE_URL.format(nodes=node_id, key=key)
-    _LOGGER.debug('getting node info from url %s', api_url)
+    api_url = PRIVATE_URL.format(sensors=pa_sensor_id, key=key)
+    _LOGGER.debug('getting sensor info from url %s', api_url)
 
-    data = {}
+    data: dict[str, dict] = {}
     async with session.get(api_url) as response:
         if not response.status == 200:
             raise PurpleAirApiStatusError(api_url, response.status, await response.text())
@@ -208,21 +205,21 @@ async def get_node_configuration(session: ClientSession, url: str):
     if not results or len(results) == 0:
         raise PurpleAirApiError('Missing results from JSON response')
 
-    node = results[0]
-    _LOGGER.debug('got node %s', node)
-    node_id = node.get('ParentID') or node['ID']
-    if not node_id:
-        raise PurpleAirApiError('Missing node ID or ParentID')
+    sensor: dict = results[0]
+    _LOGGER.debug('got sensor %s', sensor)
+    pa_sensor_id = sensor.get('ParentID') or sensor['ID']
+    if not pa_sensor_id:
+        raise PurpleAirApiError('Missing ID or ParentID')
 
-    node_id = str(node_id)
+    pa_sensor_id = str(pa_sensor_id)
 
     config = PurpleAirApiConfigEntry(
-        node_id=node_id,
-        title=node.get('Label'),
-        hidden=node.get('Hidden') == 'true',
-        key=node.get('THINGSPEAK_PRIMARY_ID_READ_KEY')
+        pa_sensor_id=pa_sensor_id,
+        title=str(sensor.get('Label')),
+        hidden=sensor.get('Hidden') == 'true',
+        key=sensor.get('THINGSPEAK_PRIMARY_ID_READ_KEY')
     )
 
-    _LOGGER.debug('generated config for node %s: %s', node_id, config)
+    _LOGGER.debug('generated config for sensor %s: %s', pa_sensor_id, config)
 
     return config
