@@ -3,7 +3,7 @@
   "config": {
     "step": {
       "user": {
-        "description": "To connect to a PurpleAir station, find the station you want to configure on the PurpleAir map, select it, and in the popup, click on \"Get This Widget\" and copy the JSON link.\n\nIf you are configuring more than one station, it will take up to 5 minutes for the station data to start flowing.",
+        "description": "To connect to a PurpleAir station, find the station you want to configure on the PurpleAir map, select it, and in the popup, right click on \"Get This Widget\" and copy the station data link.\n\nA device will be created with basic data and will be populated on the next data pull.",
         "title": "Connect to a PurpleAir Station",
         "data": {
           "url": "Station JSON URL"
@@ -11,8 +11,10 @@
       }
     },
     "error": {
-      "cannot_connect": "Failed to connect, please try again.",
-      "unknown": "An unknown error occurred."
+      "bad_data": "PurpleAir API returned unrecognized data. See the logs for more information.",
+      "bad_status": "PurpleAir API returned a bad status code. See the logs for more information.",
+      "unknown": "An unknown error occurred during setup. See the logs for more information.",
+      "url": "Invalid URL provided. Please make sure you copied the link from\n    \"Get This Widget\" > \"Download\""
     },
     "abort": {
       "already_configured": "This PurpleAir station ID is already registered."

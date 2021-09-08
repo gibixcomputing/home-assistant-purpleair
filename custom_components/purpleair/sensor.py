@@ -1,73 +1,244 @@
 """ The Purple Air air_quality platform. """
-import asyncio
+from __future__ import annotations
+
 import logging
 
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.dispatcher import async_dispatcher_connect
-from homeassistant.helpers.entity import Entity
+from typing import Final, Optional, Union
 
-from .const import DISPATCHER_PURPLE_AIR, DOMAIN
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import ATTR_LATITUDE, ATTR_LONGITUDE
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, CoordinatorEntity
+from homeassistant.util import dt
+
+from .const import (
+    DOMAIN,
+    SENSOR_TYPES,
+)
+from .model import (
+    PurpleAirConfigEntry,
+    PurpleAirDomainData,
+    PurpleAirSensorEntityDescription,
+)
+from .purple_air_api.model import (
+    PurpleAirApiSensorData,
+    PurpleAirApiSensorReading,
+)
+
+PARALLEL_UPDATES = 1
 
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(hass, config_entry, async_schedule_add_entities):
-    _LOGGER.debug('registring aqi sensor with data: %s', config_entry.data)
+async def async_setup_entry(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    async_schedule_add_entities: AddEntitiesCallback
+):
+    """Creates custom air quality index sensors for Home Assistant."""
 
-    async_schedule_add_entities([PurpleAirQualityIndex(hass, config_entry)])
+    config = PurpleAirConfigEntry(**config_entry.data)
+    _LOGGER.debug('registring entry with api with sensor with data: %s', config)
 
+    domain_data: PurpleAirDomainData = hass.data[DOMAIN]
+    api = domain_data.api
+    coordinator = domain_data.coordinator
+    expected_entries = domain_data.expected_entries
 
-class PurpleAirQualityIndex(Entity):
-    def __init__(self, hass, config_entry):
-        data = config_entry.data
+    dev_registry = device_registry.async_get(hass)
+    device = dev_registry.async_get_device({(DOMAIN, config.pa_sensor_id)})
 
-        self._hass = hass
-        self._node_id = data['id']
-        self._title = data['title']
-        self._api = hass.data[DOMAIN]
-        self._stop_listening = None
+    if not device or device.model == 'unknown':
+        _LOGGER.debug('listening for data to update device info for sensor %s', config.pa_sensor_id)
+        unregister = None
 
-    @property
-    def attribution(self):
-        return 'Data provided by PurpleAir'
+        def callback():
+            pa_sensor: PurpleAirApiSensorData = coordinator.data.get(config.pa_sensor_id)
+            if not pa_sensor:
+                return
 
-    @property
-    def available(self):
-        return self._api.is_node_registered(self._node_id)
+            _LOGGER.debug('updating device info for sensor %s', config.pa_sensor_id)
 
-    @property
-    def icon(self):
-        return 'mdi:weather-hazy'
+            device = dev_registry.async_get_device({(DOMAIN, config.pa_sensor_id)})
+            if not device:
+                # device has not been registered yet, wait for next update.
+                return
 
-    @property
-    def name(self):
-        return f'{self._title} Air Quality Index'
+            _LOGGER.debug('device %s', device)
+            dev_registry.async_update_device(
+                device.id,
+                name=config.title or pa_sensor.label,
+                manufacturer='PurpleAir',
+                model=pa_sensor.type,
+                sw_version=pa_sensor.version,
+            )
 
-    @property
-    def should_poll(self):
-        return False
+            _LOGGER.debug('updated device info for sensor %s', config.pa_sensor_id)
+            unregister()
 
-    @property
-    def state(self):
-        return self._api.get_reading(self._node_id, 'pm2_5_atm_aqi')
+        unregister = coordinator.async_add_listener(callback)
 
-    @property
-    def unique_id(self):
-        return f'{self._node_id}_air_quality_index'
+    pa_sensors = []
 
-    @property
-    def unit_of_measurement(self):
-        return 'AQI'
+    for description in SENSOR_TYPES:
+        pa_sensors.append(PurpleAirSensor(config, description, coordinator))
 
-    async def async_added_to_hass(self):
-        self._stop_listening = async_dispatcher_connect(
-            self._hass,
-            DISPATCHER_PURPLE_AIR,
-            self.async_write_ha_state
+    # register this entry in the API list
+    api.register_sensor(config.pa_sensor_id, config.title, config.hidden, config.key)
+
+    # check for the number of registered sensor during startup to only request an update
+    # once all expected sensors are registered.
+    if (
+        (
+            not expected_entries  # expected_entries will be 0/None if this is the first one
+            or api.get_sensor_count() == expected_entries  # safety for not spamming at startup
         )
+        and not coordinator.data.get(config.pa_sensor_id)  # skips refresh if enabling extra sensors
+    ):
+        await coordinator.async_config_entry_first_refresh()
+        hass.data[DOMAIN].expected_entries = 0
 
-    async def async_will_remove_from_hass(self):
-        if self._stop_listening:
-            self._stop_listening()
-            self._stop_listening = None
+    async_schedule_add_entities(pa_sensors, False)
+
+
+class PurpleAirSensor(CoordinatorEntity):  # pylint: disable=too-many-instance-attributes
+    """Provides the calculated Air Quality Index as a separate sensor for Home Assistant."""
+
+    _attr_attribution: Final = 'Data provided by PurpleAir'
+
+    config: PurpleAirConfigEntry
+    coordinator: DataUpdateCoordinator[PurpleAirApiSensorData]
+    entity_description: PurpleAirSensorEntityDescription
+    pa_sensor_id: str
+
+    def __init__(
+        self,
+        config: PurpleAirConfigEntry,
+        description: PurpleAirSensorEntityDescription,
+        coordinator: DataUpdateCoordinator[PurpleAirApiSensorData],
+    ):
+        super().__init__(coordinator)
+
+        self._attr_device_class = description.device_class
+        self._attr_entity_registry_enabled_default: Final = description.enable_default
+        self._attr_icon: Final = description.icon
+        self._attr_name: Final = f'{config.title} {description.name}'
+        self._attr_unique_id: Final = f'{config.pa_sensor_id}_{description.unique_id_suffix}'
+        self._attr_unit_of_measurement: Final = description.native_unit_of_measurement
+
+        self.config = config
+        self.coordinator = coordinator
+        self.entity_description = description
+        self.pa_sensor_id = config.pa_sensor_id
+
+        self._warn_readings = False
+        self._warn_stale = False
+
+    @property
+    def available(self) -> bool:
+        """Gets whether the sensor is available."""
+
+        pa_sensor: Optional[PurpleAirApiSensorData] = self._get_sensor_data()
+        if not pa_sensor:
+            return False
+
+        now = dt.utcnow()
+        diff = now - pa_sensor.last_update
+
+        if diff.seconds > 5400:
+            if self.entity_description.primary and not self._warn_stale:
+                _LOGGER.warning(
+                    'PurpleAir Sensor "%s" (%s) has not sent data over 90 mins. Last update was %s',
+                    self.config.title,
+                    self.pa_sensor_id,
+                    dt.as_local(pa_sensor.last_update)
+                )
+                self._warn_stale = True
+
+            return False
+
+        if self._get_confidence() == 'invalid':
+            if not self._warn_readings:
+                _LOGGER.warning(
+                    'PurpleAir Sensor "%s" (%s) is returning invalid data',
+                    self.config.title,
+                    self.pa_sensor_id
+                )
+                self._warn_readings = True
+
+            return False
+
+        self._warn_readings = False
+        self._warn_stale = False
+        return True
+
+    @property
+    def device_info(self) -> dict:
+        """Gets the device information this sensor is attached to."""
+        return {
+            'identifiers': {(DOMAIN, self.pa_sensor_id)},
+            'default_name': self.config.title,
+            'default_manufacturer': 'PurpleAir',
+            'default_model': 'unknown',
+        }
+
+    @property
+    def extra_state_attributes(self) -> Optional[dict]:
+        """Gets extra data about the primary sensor (AQI)."""
+
+        pa_sensor = self.coordinator.data.get(self.pa_sensor_id)
+        if not pa_sensor:
+            return None
+
+        confidence = self._get_confidence()
+
+        if not self.entity_description.primary:
+            if confidence:
+                return {'confidence': confidence}
+            return None
+
+        attrs = {
+            'last_seen': dt.as_local(pa_sensor.last_seen),
+            'last_update': dt.as_local(pa_sensor.last_update),
+            'device_location': pa_sensor.device_location,
+            'adc': pa_sensor.adc,
+            'rssi': pa_sensor.rssi,
+            'uptime': pa_sensor.uptime,
+        }
+
+        if pa_sensor.lat and pa_sensor.lon:
+            attrs[ATTR_LATITUDE] = pa_sensor.lat
+            attrs[ATTR_LONGITUDE] = pa_sensor.lon
+
+        if confidence:
+            attrs['confidence'] = confidence
+
+        readings = self._get_readings()
+        if readings:
+            if status := readings.get_status(self.entity_description.key):
+                attrs['status'] = status
+
+        return attrs
+
+    @property
+    def state(self) -> Optional[Union[int, float]]:
+        """Returns the calculated AQI of the sensor as the current state."""
+
+        readings = self._get_readings()
+        if not readings:
+            return None
+
+        return readings.get_value(self.entity_description.key)
+
+    def _get_confidence(self) -> Optional[str]:
+        readings = self._get_readings()
+        return readings.get_confidence(self.entity_description.key) if readings else None
+
+    def _get_readings(self) -> Optional[PurpleAirApiSensorReading]:
+        pa_sensor = self._get_sensor_data()
+        return pa_sensor.readings if pa_sensor else None
+
+    def _get_sensor_data(self) -> Optional[PurpleAirApiSensorData]:
+        return self.coordinator.data.get(self.pa_sensor_id)
