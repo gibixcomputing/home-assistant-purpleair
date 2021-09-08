@@ -76,10 +76,10 @@ def add_aqi_calculations(pa_sensors: PurpleAirApiSensorDataDict, *, cache: EpaAv
                 pm25_corrected_aqi
             )
 
-            aqi_status = 'ready'
+            aqi_status = 'stable'
             count = len(epa_avg)
             if count < 12:
-                aqi_status = f'initializing ({(12 - count) * 5} mins left)'
+                aqi_status = f'calculating ({(12 - count) * 5} mins left)'
 
             readings.set_value(API_ATTR_PM25_AQI, pm25_corrected_aqi, confidence)
             readings.set_status(API_ATTR_PM25_AQI, aqi_status)

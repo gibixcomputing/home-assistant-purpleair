@@ -1,6 +1,8 @@
 """Contains errors that can be raised by the PurpleAirApi."""
 from __future__ import annotations
 
+from typing import Any
+
 
 class PurpleAirApiError(Exception):
     """Raised when an error with the PurpleAir APi is encountered.
@@ -12,6 +14,19 @@ class PurpleAirApiError(Exception):
     def __init__(self, message: str):
         super().__init__()
         self.message = message
+
+
+class PurpleAirApiInvalidResponseError(PurpleAirApiError):
+    """Raised when the data from PurpleAir cannot be parsed.
+
+    Attributes:
+      message -- An explanation of the error.
+      data    -- Data returned from the API call that could not be recognized.
+    """
+
+    def __init__(self, message: str, data: Any):
+        super().__init__(message)
+        self.data = data
 
 
 class PurpleAirApiStatusError(PurpleAirApiError):

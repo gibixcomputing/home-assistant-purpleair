@@ -4,8 +4,10 @@
             "already_configured": "This PurpleAir station ID is already registered."
         },
         "error": {
-            "cannot_connect": "Failed to connect, please try again.",
-            "unknown": "An unknown error occurred."
+            "bad_data": "PurpleAir API returned unrecognized data. See the logs for more information.",
+            "bad_status": "PurpleAir API returned a bad status code. See the logs for more information.",
+            "unknown": "An unknown error occurred during setup. See the logs for more information.",
+            "url": "Invalid URL provided. Please make sure you copied the link from\n    \"Get This Widget\" > \"Download\""
         },
         "step": {
             "user": {

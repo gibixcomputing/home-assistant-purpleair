@@ -7,46 +7,50 @@ import logging
 import voluptuous as vol
 
 from homeassistant.core import HomeAssistant
-from homeassistant import config_entries
-from homeassistant.config_entries import CONN_CLASS_CLOUD_POLL
+from homeassistant.config_entries import CONN_CLASS_CLOUD_POLL, ConfigFlow
 from homeassistant.const import CONF_URL
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import config_validation
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import DOMAIN
 from .model import PurpleAirConfigEntry
 from .purple_air_api import get_sensor_configuration
+from .purple_air_api.exceptions import (
+    PurpleAirApiInvalidResponseError,
+    PurpleAirApiStatusError,
+    PurpleAirApiUrlError,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
 
-async def validate_input(hass: HomeAssistant, data: dict[str, str]) -> PurpleAirConfigEntry:
-    """Validate the user input allows us to connect.
-
-    Data has the keys from DATA_SCHEMA with values provided by the user.
+async def get_sensor_config(
+    hass: HomeAssistant,
+    user_input: dict[str, str]
+) -> PurpleAirConfigEntry:
+    """
+    Gets a PurpleAirConfigEntry for the given user_input. The user_input dict is expected to contain
+    an entry for "url".
     """
 
     session = async_get_clientsession(hass)
-    url = data['url']
+    url = config_validation.url(user_input.get('url'))
 
-    try:
-        pa_sensor = await get_sensor_configuration(session, url)
+    pa_sensor = await get_sensor_configuration(session, url)
 
-        config = PurpleAirConfigEntry(
-            pa_sensor_id=pa_sensor.pa_sensor_id,
-            title=pa_sensor.title,
-            key=pa_sensor.key,
-            hidden=pa_sensor.key
-        )
+    config = PurpleAirConfigEntry(
+        pa_sensor_id=pa_sensor.pa_sensor_id,
+        title=pa_sensor.title,
+        key=pa_sensor.key,
+        hidden=pa_sensor.key
+    )
 
-        _LOGGER.debug('got configuration %s', config)
-        return config
-    except Exception as error:
-        raise PurpleAirConfigError(error) from error
+    _LOGGER.debug('got configuration %s', config)
+    return config
 
 
-class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for PurpleAir."""
+class PurpleAirConfigFlow(ConfigFlow, domain=DOMAIN):
+    """Configuration flow for setting up a new PurpleAir Sensor."""
 
     VERSION = 3
     CONNECTION_CLASS = CONN_CLASS_CLOUD_POLL
@@ -57,18 +61,25 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
         if user_input is not None:
             try:
-                config = await validate_input(self.hass, user_input)
+                config = await get_sensor_config(self.hass, user_input)
 
                 await self.async_set_unique_id(config.get_uniqueid())
                 self._abort_if_unique_id_configured()
 
                 return self.async_create_entry(title=config.title, data=config.asdict())
-            except CannotConnect:
-                errors["base"] = "cannot_connect"
-            except InvalidAuth:
-                errors["base"] = "invalid_auth"
+            except (vol.Invalid, PurpleAirApiUrlError):
+                errors["url"] = "url"
+            except PurpleAirApiStatusError as error:
+                _LOGGER.exception("PurpleAir API returned bad status code %s\nData:\n%s",
+                                  error.status, error.text, exc_info=error)
+                errors["base"] = "bad_status"
+            except PurpleAirApiInvalidResponseError as error:
+                _LOGGER.exception("PurpleAir API returned invalid data.\nMessage: %s\nData: %s",
+                                  error.message, error.data, exc_info=error)
+                errors["base"] = "bad_data"
             except Exception as error:  # pylint: disable=broad-except
-                _LOGGER.exception("Unexpected exception: %s", error)
+                _LOGGER.exception("An unknown error occurred while setting up the PurpleAir Sensor",
+                                  exc_info=error)
                 errors["base"] = "unknown"
 
         data_schema = vol.Schema(
@@ -80,18 +91,3 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="user", data_schema=data_schema, errors=errors
         )
-
-
-class CannotConnect(HomeAssistantError):
-    """Error to indicate we cannot connect."""
-
-
-class InvalidAuth(HomeAssistantError):
-    """Error to indicate there is invalid auth."""
-
-
-class PurpleAirConfigError(HomeAssistantError):
-    """Error to indicate a bad HTTP response."""
-
-    def __init__(self, error):
-        self.error = error

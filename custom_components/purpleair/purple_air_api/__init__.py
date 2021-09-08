@@ -3,14 +3,14 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import re
 from typing import Optional
+from urllib.parse import parse_qs, urlsplit
 
 from aiohttp import ClientSession
 
 from .const import PRIVATE_URL, PUBLIC_URL
 from .exceptions import (
-    PurpleAirApiError,
+    PurpleAirApiInvalidResponseError,
     PurpleAirApiStatusError,
     PurpleAirApiUrlError,
 )
@@ -179,16 +179,20 @@ async def get_sensor_configuration(session: ClientSession, url: str) -> PurpleAi
         https://www.purpleair.com/sensorlist?key={key}&show={pa_sensor_id}
     """
 
-    if not re.match(r'.*purpleair.*', url, re.IGNORECASE):
-        raise PurpleAirApiUrlError('Provided URL is invalid', url)
+    try:
+        parsed_url = urlsplit(url)
+    except Exception as error:
+        raise PurpleAirApiUrlError('Error parsing URL', url) from error
 
-    key_match = re.match(r'.*key=(?P<key>[^&]+)', url)
-    sensor_match = re.match(r'.*show=(?P<pa_sensor_id>[^&]+)', url)
+    hostname = parsed_url.hostname or ''
+    if 'purpleair' not in hostname:
+        raise PurpleAirApiUrlError('Unrecognized URL', url)
 
-    key = key_match.group('key') if key_match else None
-    pa_sensor_id = sensor_match.group('pa_sensor_id') if sensor_match else None
+    query = parse_qs(parsed_url.query)
+    key = query.get('key', [''])[0]
+    pa_sensor_id = query.get('show', [''])[0]
 
-    if not key or not pa_sensor_id:
+    if not pa_sensor_id:
         raise PurpleAirApiUrlError('Unable to get sensor id and/or key from URL', url)
 
     api_url = PRIVATE_URL.format(sensors=pa_sensor_id, key=key)
@@ -196,20 +200,20 @@ async def get_sensor_configuration(session: ClientSession, url: str) -> PurpleAi
 
     data: dict[str, dict] = {}
     async with session.get(api_url) as response:
-        if not response.status == 200:
+        if response.status != 200:
             raise PurpleAirApiStatusError(api_url, response.status, await response.text())
 
         data = await response.json()
 
     results = data.get('results', [])
     if not results or len(results) == 0:
-        raise PurpleAirApiError('Missing results from JSON response')
+        raise PurpleAirApiInvalidResponseError('Missing results from JSON response', results)
 
     sensor: dict = results[0]
     _LOGGER.debug('got sensor %s', sensor)
     pa_sensor_id = sensor.get('ParentID') or sensor['ID']
     if not pa_sensor_id:
-        raise PurpleAirApiError('Missing ID or ParentID')
+        raise PurpleAirApiInvalidResponseError('Missing ID or ParentID', sensor)
 
     pa_sensor_id = str(pa_sensor_id)
 
