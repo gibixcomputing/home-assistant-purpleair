@@ -152,6 +152,12 @@ the near future.
 # Releases
 
 
+## 2.0.2
+
+Support Python 3.8 typings. `deque` and `dict` are not subscriptable
+when creating a type alias.
+
+
 ## 2.0.1
 
 Adds support for Home Assistant instances running on 2021.8 (or earlier,
