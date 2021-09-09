@@ -7,11 +7,7 @@ from typing import Final
 from homeassistant.components.sensor import STATE_CLASS_MEASUREMENT
 from homeassistant.const import (
     CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
-    DEVICE_CLASS_AQI,
     DEVICE_CLASS_HUMIDITY,
-    DEVICE_CLASS_PM1,
-    DEVICE_CLASS_PM10,
-    DEVICE_CLASS_PM25,
     DEVICE_CLASS_PRESSURE,
     DEVICE_CLASS_TEMPERATURE,
     PERCENTAGE,
@@ -31,12 +27,37 @@ from .purple_air_api.const import (
     API_ATTR_PRESSURE,
 )
 
+# support HA installations before 2021.9
+try:
+    from homeassistant.const import (
+        DEVICE_CLASS_AQI,
+        DEVICE_CLASS_PM1,
+        DEVICE_CLASS_PM10,
+        DEVICE_CLASS_PM25,
+    )
+    _LEGACY_HA = False
+except ImportError:
+    DEVICE_CLASS_AQI = "aqi"
+    DEVICE_CLASS_PM1 = "pm1"
+    DEVICE_CLASS_PM10 = "pm10"
+    DEVICE_CLASS_PM25 = "pm25"
+    _LEGACY_HA = True
+
 DOMAIN: Final = 'purpleair'
 
 SCAN_INTERVAL: Final = 300
 
+
+def _legacy_ha(**kwargs) -> dict:
+    if _LEGACY_HA:
+        kwargs['unit_of_measurement'] = kwargs['native_unit_of_measurement']
+        del kwargs['native_unit_of_measurement']
+
+    return kwargs
+
+
 SENSOR_TYPES: tuple[PurpleAirSensorEntityDescription, ...] = (
-    PurpleAirSensorEntityDescription(
+    PurpleAirSensorEntityDescription(**_legacy_ha(
         key=API_ATTR_PM25_AQI,
         name='Air Quality Index',
         icon='mdi:weather-hazy',
@@ -46,8 +67,8 @@ SENSOR_TYPES: tuple[PurpleAirSensorEntityDescription, ...] = (
         unique_id_suffix='air_quality_index',
         enable_default=True,
         primary=True,
-    ),
-    PurpleAirSensorEntityDescription(
+    )),
+    PurpleAirSensorEntityDescription(**_legacy_ha(
         key=API_ATTR_PM25_AQI_RAW,
         name='Air Quality Index (Raw)',
         icon='mdi:weather-hazy',
@@ -55,8 +76,8 @@ SENSOR_TYPES: tuple[PurpleAirSensorEntityDescription, ...] = (
         state_class=STATE_CLASS_MEASUREMENT,
         native_unit_of_measurement='AQI',
         unique_id_suffix='aqi_raw',
-    ),
-    PurpleAirSensorEntityDescription(
+    )),
+    PurpleAirSensorEntityDescription(**_legacy_ha(
         key=API_ATTR_PM25,
         name='PM 2.5',
         icon='mdi:blur',
@@ -64,8 +85,8 @@ SENSOR_TYPES: tuple[PurpleAirSensorEntityDescription, ...] = (
         state_class=STATE_CLASS_MEASUREMENT,
         native_unit_of_measurement=CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
         unique_id_suffix='pm25',
-    ),
-    PurpleAirSensorEntityDescription(
+    )),
+    PurpleAirSensorEntityDescription(**_legacy_ha(
         key=API_ATTR_PM1,
         name='PM 1.0',
         icon='mdi:blur',
@@ -73,8 +94,8 @@ SENSOR_TYPES: tuple[PurpleAirSensorEntityDescription, ...] = (
         state_class=STATE_CLASS_MEASUREMENT,
         native_unit_of_measurement=CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
         unique_id_suffix='pm1',
-    ),
-    PurpleAirSensorEntityDescription(
+    )),
+    PurpleAirSensorEntityDescription(**_legacy_ha(
         key=API_ATTR_PM10,
         name='PM 10.0',
         icon='mdi:blur',
@@ -82,8 +103,8 @@ SENSOR_TYPES: tuple[PurpleAirSensorEntityDescription, ...] = (
         state_class=STATE_CLASS_MEASUREMENT,
         native_unit_of_measurement=CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
         unique_id_suffix='pm10',
-    ),
-    PurpleAirSensorEntityDescription(
+    )),
+    PurpleAirSensorEntityDescription(**_legacy_ha(
         key=API_ATTR_HUMIDITY,
         name='Humidity',
         icon='mdi:water-percent',
@@ -91,8 +112,8 @@ SENSOR_TYPES: tuple[PurpleAirSensorEntityDescription, ...] = (
         state_class=STATE_CLASS_MEASUREMENT,
         native_unit_of_measurement=PERCENTAGE,
         unique_id_suffix='humidity',
-    ),
-    PurpleAirSensorEntityDescription(
+    )),
+    PurpleAirSensorEntityDescription(**_legacy_ha(
         key=API_ATTR_TEMP_F,
         name='Temperature',
         icon='mdi:thermometer',
@@ -100,8 +121,8 @@ SENSOR_TYPES: tuple[PurpleAirSensorEntityDescription, ...] = (
         state_class=STATE_CLASS_MEASUREMENT,
         native_unit_of_measurement=TEMP_FAHRENHEIT,
         unique_id_suffix='temp',
-    ),
-    PurpleAirSensorEntityDescription(
+    )),
+    PurpleAirSensorEntityDescription(**_legacy_ha(
         key=API_ATTR_PRESSURE,
         name='Pressure',
         icon='mdi:gauge',
@@ -109,5 +130,5 @@ SENSOR_TYPES: tuple[PurpleAirSensorEntityDescription, ...] = (
         state_class=STATE_CLASS_MEASUREMENT,
         native_unit_of_measurement=PRESSURE_HPA,
         unique_id_suffix='pressure',
-    ),
+    )),
 )

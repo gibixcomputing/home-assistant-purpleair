@@ -126,7 +126,10 @@ class PurpleAirSensor(CoordinatorEntity):  # pylint: disable=too-many-instance-a
         self._attr_icon: Final = description.icon
         self._attr_name: Final = f'{config.title} {description.name}'
         self._attr_unique_id: Final = f'{config.pa_sensor_id}_{description.unique_id_suffix}'
-        self._attr_unit_of_measurement: Final = description.native_unit_of_measurement
+        self._attr_unit_of_measurement: Final = (  # temporary support for HA < 2021.9
+            getattr(description, 'native_unit_of_measurement', None)
+            or description.unit_of_measurement
+        )
 
         self.config = config
         self.coordinator = coordinator

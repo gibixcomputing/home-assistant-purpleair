@@ -140,6 +140,7 @@ Confidence States:
 This component is licensed under the MIT license, so feel free to copy,
 enhance, and redistribute as you see fit.
 
+
 # Notes
 
 This started as a single-day project and has grown to much more. This
@@ -147,7 +148,17 @@ should work with both public and private (hidden) cloud devices. I just
 recently purchased an ourdoor sensor, so local API support may come in
 the near future.
 
+
 # Releases
+
+
+## 2.0.1
+
+Adds support for Home Assistant instances running on 2021.8 (or earlier,
+prior versions are untested). This is due to new device classes and
+`native_unit_of_measurement` being added in Home Assistant 2021.9.
+
+
 
 ## 2.0.0
 
@@ -155,6 +166,7 @@ This is a breaking change! The `air_quality` sensor in Home Assistant is
 deprecated and therefore has been removed. The new logic of adding
 additional disabled sensors replace the lost information and can be
 enabled if desired.
+
 
 ### Major Changes
 
@@ -173,6 +185,7 @@ enabled if desired.
 * Adds a device entity to Home Assistant to contain all of the new
   sensors.
 
+
 ### Minor Changes
 
 * Adds additional data on the primary sensor, such as the RSSI value for
@@ -189,6 +202,7 @@ enabled if desired.
 
 * Adds warning to the logs to indicate when a sensor is sending old data
   or if a dual laser sensor has faulty readings.
+
 
 
 ### Related Issues
