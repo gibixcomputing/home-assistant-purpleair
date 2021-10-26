@@ -6,7 +6,6 @@ import logging
 from typing import Final, Optional, Union
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import ATTR_LATITUDE, ATTR_LONGITUDE
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -103,7 +102,9 @@ async def async_setup_entry(
     async_schedule_add_entities(pa_sensors, False)
 
 
-class PurpleAirSensor(CoordinatorEntity):  # pylint: disable=too-many-instance-attributes
+class PurpleAirSensor(
+    CoordinatorEntity[PurpleAirApiSensorData]
+):  # pylint: disable=too-many-instance-attributes
     """Provides the calculated Air Quality Index as a separate sensor for Home Assistant."""
 
     _attr_attribution: Final = 'Data provided by PurpleAir'
@@ -121,20 +122,16 @@ class PurpleAirSensor(CoordinatorEntity):  # pylint: disable=too-many-instance-a
     ):
         super().__init__(coordinator)
 
-        self._attr_device_class = description.device_class
-        self._attr_entity_registry_enabled_default: Final = description.enable_default
-        self._attr_icon: Final = description.icon
+        self.config = config
+        self.entity_description = description
+        self.pa_sensor_id = config.pa_sensor_id
+
         self._attr_name: Final = f'{config.title} {description.name}'
         self._attr_unique_id: Final = f'{config.pa_sensor_id}_{description.unique_id_suffix}'
         self._attr_unit_of_measurement: Final = (  # temporary support for HA < 2021.9
             getattr(description, 'native_unit_of_measurement', None)
             or description.unit_of_measurement
         )
-
-        self.config = config
-        self.coordinator = coordinator
-        self.entity_description = description
-        self.pa_sensor_id = config.pa_sensor_id
 
         self._warn_readings = False
         self._warn_stale = False
@@ -143,8 +140,7 @@ class PurpleAirSensor(CoordinatorEntity):  # pylint: disable=too-many-instance-a
     def available(self) -> bool:
         """Gets whether the sensor is available."""
 
-        pa_sensor: Optional[PurpleAirApiSensorData] = self._get_sensor_data()
-        if not pa_sensor:
+        if not (pa_sensor := self._get_sensor_data()):
             return False
 
         now = dt.utcnow()
@@ -191,8 +187,7 @@ class PurpleAirSensor(CoordinatorEntity):  # pylint: disable=too-many-instance-a
     def extra_state_attributes(self) -> Optional[dict]:
         """Gets extra data about the primary sensor (AQI)."""
 
-        pa_sensor = self.coordinator.data.get(self.pa_sensor_id)
-        if not pa_sensor:
+        if not (pa_sensor := self.coordinator.data.get(self.pa_sensor_id)):
             return None
 
         confidence = self._get_confidence()
@@ -211,15 +206,10 @@ class PurpleAirSensor(CoordinatorEntity):  # pylint: disable=too-many-instance-a
             'uptime': pa_sensor.uptime,
         }
 
-        if pa_sensor.lat and pa_sensor.lon:
-            attrs[ATTR_LATITUDE] = pa_sensor.lat
-            attrs[ATTR_LONGITUDE] = pa_sensor.lon
-
         if confidence:
             attrs['confidence'] = confidence
 
-        readings = self._get_readings()
-        if readings:
+        if readings := self._get_readings():
             if status := readings.get_status(self.entity_description.key):
                 attrs['status'] = status
 
@@ -230,10 +220,7 @@ class PurpleAirSensor(CoordinatorEntity):  # pylint: disable=too-many-instance-a
         """Returns the calculated AQI of the sensor as the current state."""
 
         readings = self._get_readings()
-        if not readings:
-            return None
-
-        return readings.get_value(self.entity_description.key)
+        return readings.get_value(self.entity_description.key) if readings else None
 
     def _get_confidence(self) -> Optional[str]:
         readings = self._get_readings()
