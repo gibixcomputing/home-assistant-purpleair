@@ -122,6 +122,6 @@ async def async_remove_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     api = hass.data[DOMAIN].api
     api.unregister_sensor(config.pa_sensor_id)
 
-    coordinator = hass.data[DOMAIN]['coordinator']
+    coordinator = hass.data[DOMAIN].coordinator
     if config.pa_sensor_id in coordinator.data:
         del coordinator.data[config.pa_sensor_id]
