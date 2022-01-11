@@ -22,11 +22,13 @@ class PurpleAirConfigEntry:
         key (str):     API key needed to access hidden sensor.
         pa_sensor_id (str): Unique id for the sensor.
         title (str):   User provided title of the sensor.
+        api_version (int): Version of PA API being used.
 
     """
 
     pa_sensor_id: str
     title: str
+    api_version: int
     hidden: bool = False
     key: Optional[str] = None
 

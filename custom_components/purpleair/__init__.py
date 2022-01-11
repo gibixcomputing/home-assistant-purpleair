@@ -50,6 +50,16 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 
         config_entry.version = 3
 
+    # Version 4: add "api_version" attribute to flag old (0) or v1 (1) API sensors
+    if config_entry.version == 3:
+        data = {**config_entry.data}
+
+        data["api_version"] = 0
+
+        config_entry.data = {**data}
+
+        config_entry.version = 4
+
     _LOGGER.debug('Migration to version %s successful', config_entry.version)
     return True
 

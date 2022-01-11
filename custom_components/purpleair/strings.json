@@ -6,7 +6,9 @@
         "description": "To connect to a PurpleAir station, find the station you want to configure on the PurpleAir map, select it, and in the popup, right click on \"Get This Widget\" and copy the station data link.\n\nA device will be created with basic data and will be populated on the next data pull.",
         "title": "Connect to a PurpleAir Station",
         "data": {
-          "url": "Station JSON URL"
+          "api_read_key": "Your API read key you received from PurpleAir",
+          "api_sensor_id": "PurpleAir station ID you want to monitor",
+          "sensor_read_key": "The station read key if the sensor is hidden (Optional)"
         }
       }
     },
