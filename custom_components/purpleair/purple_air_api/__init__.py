@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Optional
 from urllib.parse import parse_qs, urlsplit
 
 from aiohttp import ClientSession
@@ -45,7 +44,7 @@ class PurpleAirApi:
         return len(self.sensors)
 
     def register_sensor(
-        self, pa_sensor_id: str, title: str, hidden: bool, key: Optional[str] = None
+        self, pa_sensor_id: str, title: str, hidden: bool, key: str | None = None
     ):
         """
         Registers a sensor with this instance. This will schedule a periodic poll against PurpleAir

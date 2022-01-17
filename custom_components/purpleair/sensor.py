@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Dict, Final, Optional, Union
+from typing import Dict, Final
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -119,7 +119,7 @@ class PurpleAirSensor(
         self,
         config: PurpleAirConfigEntry,
         description: PurpleAirSensorEntityDescription,
-        coordinator: DataUpdateCoordinator[Dict[str, PurpleAirApiSensorData]],
+        coordinator: DataUpdateCoordinator[dict[str, PurpleAirApiSensorData]],
     ):
         super().__init__(coordinator)
 
@@ -187,7 +187,7 @@ class PurpleAirSensor(
         }
 
     @property
-    def extra_state_attributes(self) -> Optional[dict]:
+    def extra_state_attributes(self) -> dict | None:
         """Gets extra data about the primary sensor (AQI)."""
 
         if not (pa_sensor := self.coordinator.data.get(self.pa_sensor_id)):
@@ -219,21 +219,21 @@ class PurpleAirSensor(
         return attrs
 
     @property
-    def state(self) -> Optional[Union[int, float]]:
+    def state(self) -> int | float | None:
         """Returns the calculated AQI of the sensor as the current state."""
 
         readings = self._get_readings()
         return readings.get_value(self.entity_description.key) if readings else None
 
-    def _get_confidence(self) -> Optional[str]:
+    def _get_confidence(self) -> str | None:
         readings = self._get_readings()
         return (
             readings.get_confidence(self.entity_description.key) if readings else None
         )
 
-    def _get_readings(self) -> Optional[PurpleAirApiSensorReading]:
+    def _get_readings(self) -> PurpleAirApiSensorReading | None:
         pa_sensor = self._get_sensor_data()
         return pa_sensor.readings if pa_sensor else None
 
-    def _get_sensor_data(self) -> Optional[PurpleAirApiSensorData]:
+    def _get_sensor_data(self) -> PurpleAirApiSensorData | None:
         return self.coordinator.data.get(self.pa_sensor_id)

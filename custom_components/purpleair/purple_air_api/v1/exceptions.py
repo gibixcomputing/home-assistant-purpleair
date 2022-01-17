@@ -13,8 +13,6 @@ class PurpleAirApiConfigError(PurpleAirApiError):
     """
 
     def __init__(self, param: str, extra: str = None):
-        super().__init__(
-            "Invalid configuration parameter: {} (extra: {})".format(param, extra)
-        )
+        super().__init__(f"Invalid configuration parameter: {param} (extra: {extra})")
         self.param = param
         self.extra = extra

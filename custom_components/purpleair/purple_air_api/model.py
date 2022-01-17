@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Deque, Dict, Optional, Union
+from typing import Deque, Dict
 
 
 @dataclass
@@ -20,7 +20,7 @@ class PurpleAirApiConfigEntry:
     pa_sensor_id: str
     title: str
     hidden: bool
-    key: Optional[str] = None
+    key: str | None = None
 
 
 @dataclass
@@ -45,15 +45,15 @@ class PurpleAirApiSensorReading:  # pylint: disable=too-many-instance-attributes
     """
 
     # sensor data
-    humidity: Optional[float] = None
-    pm10_0_atm: Optional[float] = None
-    pm1_0_atm: Optional[float] = None
-    pm2_5_atm: Optional[float] = None
-    pm2_5_atm_aqi: Optional[int] = None
-    pm2_5_atm_aqi_raw: Optional[int] = None
-    pm2_5_cf_1: Optional[float] = None
-    pressure: Optional[float] = None
-    temp_f: Optional[float] = None
+    humidity: float | None = None
+    pm10_0_atm: float | None = None
+    pm1_0_atm: float | None = None
+    pm2_5_atm: float | None = None
+    pm2_5_atm_aqi: int | None = None
+    pm2_5_atm_aqi_raw: int | None = None
+    pm2_5_cf_1: float | None = None
+    pressure: float | None = None
+    temp_f: float | None = None
 
     # additional sensor information
     confidence: dict[str, str] = field(default_factory=dict)
@@ -98,7 +98,7 @@ class PurpleAirApiSensorReading:  # pylint: disable=too-many-instance-attributes
         """Gets the given sensor attribute status."""
         return self.status.get(attr, "")
 
-    def get_value(self, attr: str) -> Union[int, float]:
+    def get_value(self, attr: str) -> int | float:
         """Gets the given sensor attribute reading."""
         return getattr(self, attr)
 
@@ -109,8 +109,8 @@ class PurpleAirApiSensorReading:  # pylint: disable=too-many-instance-attributes
     def set_value(
         self,
         attr: str,
-        value: Optional[Union[int, float]],
-        confidence: Optional[str] = None,
+        value: int | float | None,
+        confidence: str | None = None,
     ):
         """
         Sets the computed value for the given sensor attribute with an optional value and confidence
@@ -154,8 +154,8 @@ class PurpleAirApiSensorData:  # pylint: disable=too-many-instance-attributes
     device_location: str = "unknown"
     version: str = "unknown"
     type: str = "unknown"
-    lat: Optional[float] = None
-    lon: Optional[float] = None
+    lat: float | None = None
+    lon: float | None = None
     rssi: float = 0
     adc: float = 0
     uptime: int = 0

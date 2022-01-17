@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from http import HTTPStatus
 import logging
-from typing import Dict
 
 from aiohttp import ClientResponse, ClientSession
 
@@ -95,7 +94,7 @@ async def get_api_sensor_config(
     return config
 
 
-async def _get_sensor_data_from_api(resp: ClientResponse) -> Dict:
+async def _get_sensor_data_from_api(resp: ClientResponse) -> dict:
     # don't parse as json if > HTTP 500
     if resp.status >= HTTPStatus.INTERNAL_SERVER_ERROR:
         _LOGGER.error(

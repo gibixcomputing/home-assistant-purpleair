@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING
 
 from homeassistant.components.sensor import SensorEntityDescription
 
@@ -30,7 +30,7 @@ class PurpleAirConfigEntry:
     title: str
     api_version: int
     hidden: bool = False
-    key: Optional[str] = None
+    key: str | None = None
 
     def asdict(self) -> dict:
         """Returns this entry as a dict."""
@@ -53,7 +53,7 @@ class PurpleAirDomainData:
     """
 
     api: PurpleAirApi
-    coordinator: DataUpdateCoordinator[Dict[str, PurpleAirApiSensorData]]
+    coordinator: DataUpdateCoordinator[dict[str, PurpleAirApiSensorData]]
     expected_entries: int = 0
 
 

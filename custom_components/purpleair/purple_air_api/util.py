@@ -303,7 +303,7 @@ def _clean_expired_cache_entries(
 ):
     """Cleans out any old cache entries older than an hour."""
     hour_ago = datetime.utcnow() - timedelta(seconds=3600)
-    expired_count = sum([1 for v in epa_avg if v.timestamp < hour_ago])
+    expired_count = sum(1 for v in epa_avg if v.timestamp < hour_ago)
     if expired_count:
         _LOGGER.info(
             'PuprleAir Sensor "%s" (%s) EPA readings contained %s old entries in cache',

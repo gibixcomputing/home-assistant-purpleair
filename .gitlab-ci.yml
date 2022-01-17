@@ -18,5 +18,5 @@ install_test_requirements:
     - pip install -r requirements.test.txt
     - black --safe --check .
     - flake8
-    - pylint ./custom_components/
+    - pylint ./custom_components/purpleair/
     - mypy ./custom_components/purpleair/

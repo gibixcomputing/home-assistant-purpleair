@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass
@@ -20,4 +19,4 @@ class ApiConfigEntry:
     pa_sensor_id: str
     name: str
     hidden: bool
-    key: Optional[str] = None
+    key: str | None = None
