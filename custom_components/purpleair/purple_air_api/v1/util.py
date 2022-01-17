@@ -20,28 +20,32 @@ async def get_api_sensor_config(
     pa_sensor_read_key: str = None,
 ) -> ApiConfigEntry:
     """
-    Gets a configuration from the API for the sensor given the data provided. Provide your PurpleAir
-    API READ key in `api_key` and the sensor to configure via `pa_sensor_id`. If the sensor is
-    private (hidden) a read key must be provided in the `pa_sensor_read_key` parameter. This method
-    will either return a valid PurpleAirApiConfigEntry with the sensor configuration data or will
+    Get a new configuration for the sensor with the provided information.
+
+    Provide your PurpleAir API READ key in `api_key` and the sensor to configure
+    via `pa_sensor_id`. If the sensor is private (hidden) a read key must be
+    provided in the `pa_sensor_read_key` parameter. This method will either return
+    a valid PurpleAirApiConfigEntry with the sensor configuration data or will
     raise a PurpleAirApiConfigError exception describing what went wrong.
 
     Possible error combinations:
 
-    |--------------|--------------|----------------------------------------------------------|
-    | .param       | .extra       |                                                          |
-    |--------------|--------------|----------------------------------------------------------|
-    | api_key      | missing      | The parameter is missing.                                |
-    |              | bad_status   | PA server returned a bad status.                         |
-    |              | not_read_key | PA server indicated key is not a READ key.               |
-    |--------------|--------------|----------------------------------------------------------|
-    | server_error | str          | .extra is the HTTP reason string.                        |
-    |--------------|--------------|----------------------------------------------------------|
-    | pa_sensor_id | missing      | The parameter is missing.                                |
-    |              | bad_read_key | pa_sensor_read_key does not match sensor read key.       |
-    |--------------|--------------|----------------------------------------------------------|
-    | bad_request  | str          | PA server returned bad request, .extra holds the reason. |
-    |--------------|--------------|----------------------------------------------------------|
+    |--------------|--------------|----------------------------------------------|
+    | .param       | .extra       |                                              |
+    |--------------|--------------|----------------------------------------------|
+    | api_key      | missing      | The parameter is missing.                    |
+    |              | bad_status   | PA server returned a bad status.             |
+    |              | not_read_key | PA server indicated key is not a READ key.   |
+    |--------------|--------------|----------------------------------------------|
+    | server_error | str          | .extra is the HTTP reason string.            |
+    |--------------|--------------|----------------------------------------------|
+    | pa_sensor_id | missing      | The parameter is missing.                    |
+    |              | bad_read_key | pa_sensor_read_key does not match sensor     |
+    |              |              | read key.                                    |
+    |--------------|--------------|----------------------------------------------|
+    | bad_request  | str          | PA server returned bad request.              |
+    |              |              | .extra holds the reason.                     |
+    |--------------|--------------|----------------------------------------------|
     """
 
     if not isinstance(api_key, str):

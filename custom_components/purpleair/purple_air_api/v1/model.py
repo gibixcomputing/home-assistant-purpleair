@@ -13,7 +13,7 @@ class ApiConfigEntry:
       pa_sensor_id: ID of the sensor being configured.
       name: Name of the sensor.
       hidden: Flag indicating whether the sensor is private or public.
-      key: Sensor read key used when retriving data from a hidden sensor.
+      key: Sensor read key used when retrieving data from a hidden sensor.
     """
 
     pa_sensor_id: str

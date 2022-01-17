@@ -18,12 +18,19 @@ class PurpleAirConfigEntry:
     """Class describing the PurpleAir configuration.
 
     Attributes:
-        hidden (bool): Indicates if the current sensor is private.
-        key (str):     API key needed to access hidden sensor.
-        pa_sensor_id (str): Unique id for the sensor.
-        title (str):   User provided title of the sensor.
-        api_version (int): Version of PA API being used.
-        api_key (str): Api key used to access the API for this sensor. Required if api_version >= 1.
+    - hidden (bool):
+          Indicates if the current sensor is private.
+    - key (str):
+          API key needed to access hidden sensor.
+    - pa_sensor_id (str):
+          Unique id for the sensor.
+    - title (str):
+          User provided title of the sensor.
+    - api_version (int):
+          Version of PA API being used.
+    - api_key (str):
+          Api key used to access the API for this sensor.
+          Required if api_version >= 1.
     """
 
     pa_sensor_id: str
@@ -34,11 +41,11 @@ class PurpleAirConfigEntry:
     key: str | None = None
 
     def asdict(self) -> dict:
-        """Returns this entry as a dict."""
+        """Return the entry as a dict."""
         return asdict(self)
 
     def get_uniqueid(self) -> str:
-        """Gets the unique id."""
+        """Get the unique id."""
         return f"purpleair_{self.pa_sensor_id}"
 
 
@@ -47,10 +54,13 @@ class PurpleAirDomainData:
     """Provides access to data properties stored in the Home Assistant DOMAIN data dict.
 
     Attributes:
-        api              -- The shared API instance used to query the PurpleAir API.
-        coordinator      -- The shared data update coordinator for use with HA sensors.
-        expected_entries -- The number of expected entries to see on startup. Used to minimize the
-                            number of queries to the API. Set to zero after startup is complete.
+    - api (PurpleAirApi):
+          The shared API instance used to query the PurpleAir API.
+    - coordinator (DataUpdateCoordinator[dict[str, PurpleAirApiSensorData]]):
+          The shared data update coordinator for use with HA sensors.
+    - expected_entries (int=0):
+          The number of expected entries to see on startup. Used to minimize the
+          number of queries to the API. Set to zero after startup is complete.
     """
 
     api: PurpleAirApi

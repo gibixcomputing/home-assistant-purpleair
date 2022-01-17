@@ -13,7 +13,7 @@ Fixes a couple annoyances:
   state of the PA sensor could be added, which may make it easier to
   report sensor issues instead of the log and sensor attributes.
 
-### Releated issues
+### Related issues
 
 Fixes #11, #12, #14, #15.
 

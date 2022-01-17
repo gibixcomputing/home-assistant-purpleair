@@ -1,4 +1,4 @@
-""" The Purple Air air_quality platform. """
+"""The Purple Air air_quality platform."""
 from __future__ import annotations
 
 import logging
@@ -32,10 +32,10 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_schedule_add_entities: AddEntitiesCallback,
 ):
-    """Creates custom air quality index sensors for Home Assistant."""
+    """Create custom air quality index sensors for Home Assistant."""
 
     config = PurpleAirConfigEntry(**config_entry.data)
-    _LOGGER.debug("registring entry with api with sensor with data: %s", config)
+    _LOGGER.debug("registering entry with api with sensor with data: %s", config)
 
     domain_data: PurpleAirDomainData = hass.data[DOMAIN]
     api = domain_data.api
@@ -102,15 +102,13 @@ async def async_setup_entry(
     async_schedule_add_entities(pa_sensors, False)
 
 
-class PurpleAirSensor(
-    CoordinatorEntity[Dict[str, PurpleAirApiSensorData]]
-):  # pylint: disable=too-many-instance-attributes
+class PurpleAirSensor(CoordinatorEntity[Dict[str, PurpleAirApiSensorData]]):
     """Provides the calculated Air Quality Index as a separate sensor for Home Assistant."""
 
     _attr_attribution: Final = "Data provided by PurpleAir"
 
     config: PurpleAirConfigEntry
-    coordinator: DataUpdateCoordinator[PurpleAirApiSensorData]
+    coordinator: DataUpdateCoordinator[dict[str, PurpleAirApiSensorData]]
     entity_description: PurpleAirSensorEntityDescription
     pa_sensor_id: str
 
@@ -119,7 +117,17 @@ class PurpleAirSensor(
         config: PurpleAirConfigEntry,
         description: PurpleAirSensorEntityDescription,
         coordinator: DataUpdateCoordinator[dict[str, PurpleAirApiSensorData]],
-    ):
+    ) -> None:
+        """Create a new PurpleAirSensor.
+
+        Args:
+          config:
+              Config entry configuring the sensor.
+          description:
+              Sensor entity description describing configuration parameters.
+          coordinator:
+              Coordinator controlling this sensor.
+        """
         super().__init__(coordinator)
 
         self.config = config
@@ -140,7 +148,7 @@ class PurpleAirSensor(
 
     @property
     def available(self) -> bool:
-        """Gets whether the sensor is available."""
+        """Return if the sensor is available."""
 
         if not (pa_sensor := self._get_sensor_data()):
             return False
@@ -177,7 +185,7 @@ class PurpleAirSensor(
 
     @property
     def device_info(self) -> dict:
-        """Gets the device information this sensor is attached to."""
+        """Get the device information this sensor is attached to."""
         return {
             "identifiers": {(DOMAIN, self.pa_sensor_id)},
             "default_name": self.config.title,
@@ -187,7 +195,7 @@ class PurpleAirSensor(
 
     @property
     def extra_state_attributes(self) -> dict | None:
-        """Gets extra data about the primary sensor (AQI)."""
+        """Get extra data about the primary sensor (AQI)."""
 
         if not (pa_sensor := self.coordinator.data.get(self.pa_sensor_id)):
             return None
@@ -219,7 +227,7 @@ class PurpleAirSensor(
 
     @property
     def state(self) -> int | float | None:
-        """Returns the calculated AQI of the sensor as the current state."""
+        """Return the calculated AQI of the sensor as the current state."""
 
         readings = self._get_readings()
         return readings.get_value(self.entity_description.key) if readings else None

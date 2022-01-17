@@ -17,7 +17,7 @@ stages:
   - linting
   - tests
 
-requirements_installation:
+requirements install:
   stage: .pre
   cache:
     policy: pull-push
@@ -28,22 +28,28 @@ requirements_installation:
       files:
         - setup.cfg
         - requirements.test.txt
+  rules:
+    - changes:
+      - setup.cfg
+      - requirements.test.txt
   script:
     - python --version
     - python3 -m venv venv
     - source venv/bin/activate
     - pip install -r requirements.test.txt
 
-text_formatting:
+formatting:
   stage: linting
+  needs: ['requirements install']
   before_script:
     - source venv/bin/activate
   script:
     - black --safe --check .
     - isort -c ./custom_components/
 
-code_quality:
+code quality:
   stage: linting
+  needs: ['requirements install']
   before_script:
     - source venv/bin/activate
   script:

@@ -33,6 +33,8 @@ class PurpleAirApi:
     _cache: EpaAvgValueCache
 
     def __init__(self, session: ClientSession):
+        """Create a new PurpleAirApi instance."""
+
         self.sensors = {}
         self.session = session
 
@@ -40,16 +42,13 @@ class PurpleAirApi:
         self._cache = create_epa_value_cache()
 
     def get_sensor_count(self):
-        """Gets the number of sensors registered with the API."""
+        """Get the number of sensors registered with this instance."""
         return len(self.sensors)
 
     def register_sensor(
         self, pa_sensor_id: str, title: str, hidden: bool, key: str | None = None
     ):
-        """
-        Registers a sensor with this instance. This will schedule a periodic poll against PurpleAir
-        if this is the first sensor added and schedule an immediate API request after 5 seconds.
-        """
+        """Register a PurpleAir sensor with this instance."""
 
         if pa_sensor_id in self.sensors:
             _LOGGER.debug("detected duplicate registration: %s", pa_sensor_id)
@@ -73,7 +72,7 @@ class PurpleAirApi:
         _LOGGER.debug("unregistered sensor: %s", pa_sensor_id)
 
     async def update(self):
-        """Main update process to query and update sensor data."""
+        """Update sensor data from the PurpleAir API."""
 
         public_sensors = [s.pa_sensor_id for s in self.sensors.values() if not s.hidden]
         private_sensors = [s.pa_sensor_id for s in self.sensors.values() if s.hidden]
@@ -96,15 +95,19 @@ class PurpleAirApi:
 
         return sensors
 
-    def _build_api_urls(self, public_sensors, private_sensors):
+    def _build_api_urls(
+        self, public_sensors: list[str], private_sensors: list[str]
+    ) -> list[str]:
         """
-        Builds a list of URLs to query based off the provided public and private sensor lists,
-        attempting to combine as many sensors in to as few API requests as possible.
+        Build a list of URLs to query the PurpleAir JSON API.
+
+        This is based off the provided public and private sensor lists, attempting
+        to combine as many sensors in to as few API requests as possible.
         """
 
         urls: list[str] = []
         if private_sensors:
-            by_keys: dict[str, str] = {}
+            by_keys: dict[str, list[str]] = {}
             for pa_sensor_id in private_sensors:
                 key = self.sensors[pa_sensor_id].key
 
@@ -128,8 +131,8 @@ class PurpleAirApi:
 
         return urls
 
-    async def _fetch_data(self, urls):
-        """Fetches data from the PurpleAir API endpoint."""
+    async def _fetch_data(self, urls: list[str]) -> list[dict]:
+        """Fetch data from the PurpleAir API endpoint."""
 
         if not urls:
             _LOGGER.debug("no sensors provided")
@@ -169,8 +172,9 @@ async def get_sensor_configuration(
     session: ClientSession, url: str
 ) -> PurpleAirApiConfigEntry:
     """
-    Gets a configuration for the sensor at the given PurpleAir URL. This string expects to see a URL
-    in the following format:
+    Get a configuration for the sensor at the given PurpleAir URL.
+
+    This string expects to see a URL in the following format:
 
         https://www.purpleair.com/json?key={key}&show={pa_sensor_id}
         https://www.purpleair.com/sensorlist?key={key}&show={pa_sensor_id}

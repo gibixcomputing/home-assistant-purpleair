@@ -1,4 +1,3 @@
-# pylint: disable=too-few-public-methods
 """Config flow for Purple Air integration."""
 from __future__ import annotations
 
@@ -31,7 +30,7 @@ async def get_sensor_config(
     hass: HomeAssistant, user_input: dict[str, str]
 ) -> PurpleAirConfigEntry:
     """
-    Creates a PurpleAirConfigEntry by passing the given user_input to get_api_sensor_config.
+    Create a new PurpleAirConfigEntry from the user input.
 
     Required dict keys:
       - CONF_API_READ_KEY: str

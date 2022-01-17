@@ -1,1 +1,1 @@
-""" PurpleAir v1 API."""
+"""PurpleAir v1 API."""

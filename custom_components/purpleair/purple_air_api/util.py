@@ -5,6 +5,7 @@ from collections import defaultdict, deque
 from datetime import datetime, timedelta, timezone
 import logging
 from math import fsum
+from typing import Any
 
 from .const import (
     API_ATTR_PM25,
@@ -30,10 +31,12 @@ WARNED_SENSORS: list[str] = []
 
 def add_aqi_calculations(
     pa_sensors: PurpleAirApiSensorDataDict, *, cache: EpaAvgValueCache = None
-):
+) -> None:
     """
-    This adds the custom AQI properties to the readings, calculating them based off the corrections
-    and breakpoints, providing a few variations depending what is needed.
+    Add AQI calculations as custom properties to the readings.
+
+    This computes the AQI values by calculating them based off the corrections
+    and breakpoints, providing a few variations depending what is available.
     """
 
     if not cache:
@@ -94,20 +97,22 @@ def add_aqi_calculations(
             readings.set_status(API_ATTR_PM25_AQI, aqi_status)
 
 
-def apply_corrections(readings: PurpleAirApiSensorReading):
+def apply_corrections(readings: PurpleAirApiSensorReading) -> None:
     """
-    The sensors for temperature and humidity are known to be slightly outside of real values, this
-    will apply a blanket correction of subtracting 8°F from the temperature and adding 4% to the
-    humidity value. This is documented as the average variance for those two sensor values.
+    Apply corrections to incoming sensor data using known adjustment values.
+
+    The sensors for temperature and humidity are known to be slightly outside of
+    real values, this will apply a blanket correction of subtracting 8°F from the
+    temperature and adding 4% to the humidity value. This is documented as the
+    average variance for those two sensor values.
 
     From the docs:
-        Humidity:
-            Relative humidity inside of the sensor housing (%). On average, this is 4% lower than
-            ambient conditions. Null if not equipped.
-
-        Temperature:
-            Temperature inside of the sensor housing (F). On average, this is 8F higher than ambient
-            conditions. Null if not equipped.
+    - Humidity:
+        Relative humidity inside of the sensor housing (%). On average, this is
+        4% lower than ambient conditions. Null if not equipped.
+    - Temperature:
+        Temperature inside of the sensor housing (F). On average, this is 8F
+        higher than ambient conditions. Null if not equipped.
     """
 
     if temperature := readings.temp_f:
@@ -123,10 +128,12 @@ def apply_corrections(readings: PurpleAirApiSensorReading):
         )
 
 
-def build_sensors(results) -> dict[str, PurpleAirApiSensorData]:
+def build_sensors(results: list[dict[str, Any]]) -> dict[str, PurpleAirApiSensorData]:
     """
-    Builds a dictionary of PurpleAir sensors and extracts available data from the JSON result array
-    returned from the PurpleAir API.
+    Build a dictionary of PurpleAir sensors.
+
+    The data is extracted from available data from the JSON result array returned
+    from the PurpleAir API.
     """
 
     sensors: dict[str, PurpleAirApiSensorData] = {}
@@ -157,17 +164,17 @@ def build_sensors(results) -> dict[str, PurpleAirApiSensorData]:
         channel = "B" if "ParentID" in result else "A"
         channel_data = readings.get_channel(channel)
         for prop in JSON_PROPERTIES:
-            channel_data[prop] = result.get(prop)
+            channel_data[prop] = float(result.get(prop, 0))
 
     return sensors
 
 
-def calc_aqi(value, index):
+def calc_aqi(value: float, index: str) -> int | None:
     """
-    Calculates the corresponding air quality index based off the available conversion data using
-    the sensors current Particulate Matter 2.5 value.
+    Calculate the air quality index based off the available conversion data.
 
-    Returns an AQI between 0 and 999 or None if the sensor reading is invalid.
+    This uses the sensors current Particulate Matter 2.5 value. Returns an AQI
+    between 0 and 999 or None if the sensor reading is invalid.
 
     See AQI_BREAKPOINTS in const.py.
     """
@@ -189,10 +196,12 @@ def calc_aqi(value, index):
     return round((aqi_range / pm_range) * aqi_c + aqi_bp.aqi_low)
 
 
-def calculate_sensor_values(sensors: dict[str, PurpleAirApiSensorData]):
+def calculate_sensor_values(sensors: dict[str, PurpleAirApiSensorData]) -> None:
     """
-    Mutates the provided sensor dictionary in place by iterating over the raw sensor data and
-    provides a normalized view and adds any calculated properties.
+    Calculate sensor values by mutating the provided sensor dictionary.
+
+    This iterates over the raw sensor data and provides a normalized view and adds
+    any calculated properties.
     """
 
     for sensor in sensors.values():
@@ -234,13 +243,13 @@ def calculate_sensor_values(sensors: dict[str, PurpleAirApiSensorData]):
 
 
 def clear_sensor_warning(pa_sensor: PurpleAirApiSensorData):
-    """Removes a sensor from the warned sensor list."""
+    """Remove a sensor from the warned sensor list."""
     if pa_sensor.pa_sensor_id in WARNED_SENSORS:
         WARNED_SENSORS.remove(pa_sensor.pa_sensor_id)
 
 
 def create_epa_value_cache() -> EpaAvgValueCache:
-    """Creaets a new EPA value cache."""
+    """Create a new, empty EPA value cache."""
     cache: EpaAvgValueCache = defaultdict(lambda: deque(maxlen=12))
     return cache
 
@@ -248,7 +257,7 @@ def create_epa_value_cache() -> EpaAvgValueCache:
 def get_pm_reading(
     pa_sensor: PurpleAirApiSensorData, prop: str, a_value: float, b_value: float
 ):
-    """Gets a value and confidence level for the given PM reading."""
+    """Get a value and confidence level for the given PM reading."""
 
     a_valid = a_value < MAX_PM_READING
     b_valid = b_value < MAX_PM_READING
@@ -282,8 +291,9 @@ def get_pm_reading(
 
 def warn_sensor_channel_bad(pa_sensor: PurpleAirApiSensorData, prop: str, channel: str):
     """
-    Logs a warning if a sensor is returning bad data for a collector channel, if the sensor has not
-    already logged a warning.
+    Log a warning if a sensor is returning bad data for a collector channel.
+
+    Only logs if the sensor has not already logged a warning.
     """
     if pa_sensor.pa_sensor_id in WARNED_SENSORS:
         return
@@ -301,7 +311,7 @@ def warn_sensor_channel_bad(pa_sensor: PurpleAirApiSensorData, prop: str, channe
 def _clean_expired_cache_entries(
     pa_sensor: PurpleAirApiSensorData, epa_avg: deque[EpaAvgValue]
 ):
-    """Cleans out any old cache entries older than an hour."""
+    """Clean out any old cache entries older than an hour."""
     hour_ago = datetime.utcnow() - timedelta(seconds=3600)
     expired_count = sum(1 for v in epa_avg if v.timestamp < hour_ago)
     if expired_count:
