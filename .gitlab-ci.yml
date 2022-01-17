@@ -4,19 +4,48 @@ variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
 
 cache:
+  policy: pull
   paths:
     - .cache/pip
     - venv/
+  key:
+    files:
+      - setup.cfg
+      - requirements.test.txt
 
-before_script:
-  - python --version  # For debugging
-  - python3 -m venv venv
-  - source venv/bin/activate
+stages:
+  - linting
+  - tests
 
-install_test_requirements:
+requirements_installation:
+  stage: .pre
+  cache:
+    policy: pull-push
+    paths:
+      - .cache/pip
+      - venv/
+    key:
+      files:
+        - setup.cfg
+        - requirements.test.txt
   script:
+    - python --version
+    - python3 -m venv venv
+    - source venv/bin/activate
     - pip install -r requirements.test.txt
+
+text_formatting:
+  stage: linting
+  before_script:
+    - source venv/bin/activate
+  script:
     - black --safe --check .
-    - flake8
+    - isort -c ./custom_components/
+
+code_quality:
+  stage: linting
+  before_script:
+    - source venv/bin/activate
+  script:
     - pylint ./custom_components/purpleair/
     - mypy ./custom_components/purpleair/

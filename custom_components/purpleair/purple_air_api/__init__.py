@@ -1,4 +1,4 @@
-"""Provides an API capable of communicating with the free PurpleAir service. """
+"""Provides an API capable of communicating with the free PurpleAir service."""
 from __future__ import annotations
 
 import asyncio
