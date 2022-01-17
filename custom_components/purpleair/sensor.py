@@ -38,10 +38,20 @@ async def async_setup_entry(
     _LOGGER.debug("registering entry with api with sensor with data: %s", config)
 
     domain_data: PurpleAirDomainData = hass.data[DOMAIN]
-    api = domain_data.api
     coordinator = domain_data.coordinator
-    expected_entries = domain_data.expected_entries
 
+    pa_sensors: list[PurpleAirSensor] = []
+    if config.api_version == 0 and (coordinator := domain_data.coordinator):
+        pa_sensors = _add_legacy_sensors(hass, config, coordinator)
+
+    async_schedule_add_entities(pa_sensors, False)
+
+
+def _add_legacy_sensors(
+    hass: HomeAssistant,
+    config: PurpleAirConfigEntry,
+    coordinator: DataUpdateCoordinator[dict[str, PurpleAirApiSensorData]],
+) -> list[PurpleAirSensor]:
     dev_registry = device_registry.async_get(hass)
     device = dev_registry.async_get_device({(DOMAIN, config.pa_sensor_id)})
 
@@ -79,27 +89,12 @@ async def async_setup_entry(
 
         unregister = coordinator.async_add_listener(callback)
 
-    pa_sensors = []
+    pa_sensors: list[PurpleAirSensor] = []
 
     for description in SENSOR_TYPES:
         pa_sensors.append(PurpleAirSensor(config, description, coordinator))
 
-    # register this entry in the API list
-    api.register_sensor(config.pa_sensor_id, config.title, config.hidden, config.key)
-
-    # check for the number of registered sensor during startup to only request an update
-    # once all expected sensors are registered.
-    if (
-        not expected_entries  # expected_entries will be 0/None if this is the first one
-        or api.get_sensor_count()
-        == expected_entries  # safety for not spamming at startup
-    ) and not coordinator.data.get(
-        config.pa_sensor_id
-    ):  # skips refresh if enabling extra sensors
-        await coordinator.async_config_entry_first_refresh()
-        hass.data[DOMAIN].expected_entries = 0
-
-    async_schedule_add_entities(pa_sensors, False)
+    return pa_sensors
 
 
 class PurpleAirSensor(CoordinatorEntity[Dict[str, PurpleAirApiSensorData]]):
