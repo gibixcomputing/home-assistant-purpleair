@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Final
+from typing import Any, Final
 
 from homeassistant.config_entries import CONN_CLASS_CLOUD_POLL, ConfigFlow
 from homeassistant.core import HomeAssistant
@@ -56,6 +56,7 @@ async def get_sensor_config(
         title=pa_sensor.name,
         key=pa_sensor.key,
         hidden=pa_sensor.hidden,
+        api_key=api_key,
         api_version=1,
     )
 
@@ -70,7 +71,7 @@ class PurpleAirConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore
     VERSION = 4
     CONNECTION_CLASS = CONN_CLASS_CLOUD_POLL
 
-    async def async_step_user(self, user_input=None):
+    async def async_step_user(self, user_input: dict[str, Any] = None):
         """Handle setup user flow."""
 
         errors = {}
@@ -108,9 +109,23 @@ class PurpleAirConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore
                 )
                 errors["base"] = "unknown"
 
+        # see if we can get another PA API key from an existing config to simplify setup.
+        api_key = ""
+        if not user_input or not user_input.get(CONF_API_READ_KEY):
+            entries = self.hass.config_entries.async_entries(DOMAIN)
+            keys = {
+                e.data.get("api_key")
+                for e in entries
+                if e.data.get("api_version") == 1 and e.data.get("api_key")
+            }
+
+            # only set the key if one exists
+            if len(keys) == 1:
+                api_key = keys.pop()
+
         data_schema = vol.Schema(
             {
-                vol.Required(CONF_API_READ_KEY): str,
+                vol.Required(CONF_API_READ_KEY, default=api_key): str,
                 vol.Required(CONF_PA_SENSOR_ID): str,
                 vol.Optional(CONF_PA_SENSOR_READ_KEY): str,
             }

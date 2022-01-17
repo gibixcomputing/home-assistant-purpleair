@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from datetime import timedelta
 import logging
+from types import MappingProxyType
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -34,7 +35,7 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         data["node_id"] = data["id"]
         del data["id"]
 
-        config_entry.data = {**data}
+        config_entry.data = MappingProxyType({**data})
 
         config_entry.version = 2
 
@@ -45,7 +46,7 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         data["pa_sensor_id"] = data["node_id"]
         del data["node_id"]
 
-        config_entry.data = {**data}
+        config_entry.data = MappingProxyType({**data})
 
         config_entry.version = 3
 
@@ -53,9 +54,10 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     if config_entry.version == 3:
         data = {**config_entry.data}
 
+        data["api_key"] = ""
         data["api_version"] = 0
 
-        config_entry.data = {**data}
+        config_entry.data = MappingProxyType({**data})
 
         config_entry.version = 4
 

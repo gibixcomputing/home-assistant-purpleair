@@ -23,12 +23,13 @@ class PurpleAirConfigEntry:
         pa_sensor_id (str): Unique id for the sensor.
         title (str):   User provided title of the sensor.
         api_version (int): Version of PA API being used.
-
+        api_key (str): Api key used to access the API for this sensor. Required if api_version >= 1.
     """
 
     pa_sensor_id: str
     title: str
     api_version: int
+    api_key: str
     hidden: bool = False
     key: str | None = None
 

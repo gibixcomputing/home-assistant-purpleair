@@ -50,10 +50,9 @@ async def async_setup_entry(
             "listening for data to update device info for sensor %s",
             config.pa_sensor_id,
         )
-        unregister = None
 
         def callback():
-            pa_sensor: PurpleAirApiSensorData = coordinator.data.get(
+            pa_sensor: PurpleAirApiSensorData | None = coordinator.data.get(
                 config.pa_sensor_id
             )
             if not pa_sensor:

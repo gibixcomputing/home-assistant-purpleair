@@ -47,5 +47,5 @@ code_quality:
   before_script:
     - source venv/bin/activate
   script:
-    - pylint ./custom_components/purpleair/
+    - pylint --persistent=n ./custom_components/purpleair/
     - mypy ./custom_components/purpleair/
