@@ -40,18 +40,18 @@ requirements install:
 
 formatting:
   stage: linting
-  needs: ['requirements install']
   before_script:
     - source venv/bin/activate
   script:
+    - codespell
     - black --safe --check .
     - isort -c ./custom_components/
 
 code quality:
   stage: linting
-  needs: ['requirements install']
   before_script:
     - source venv/bin/activate
   script:
-    - pylint --persistent=n ./custom_components/purpleair/
+    - flake8
+    - pylint ./custom_components/purpleair/
     - mypy ./custom_components/purpleair/
