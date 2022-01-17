@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Dict, Optional
 
 from homeassistant.components.sensor import SensorEntityDescription
 
@@ -38,11 +38,11 @@ class PurpleAirConfigEntry:
 
     def get_uniqueid(self) -> str:
         """Gets the unique id."""
-        return f'purpleair_{self.pa_sensor_id}'
+        return f"purpleair_{self.pa_sensor_id}"
 
 
 @dataclass
-class PurpleAirDomainData():
+class PurpleAirDomainData:
     """Provides access to data properties stored in the Home Assistant DOMAIN data dict.
 
     Attributes:
@@ -51,8 +51,9 @@ class PurpleAirDomainData():
         expected_entries -- The number of expected entries to see on startup. Used to minimize the
                             number of queries to the API. Set to zero after startup is complete.
     """
+
     api: PurpleAirApi
-    coordinator: DataUpdateCoordinator[PurpleAirApiSensorData]
+    coordinator: DataUpdateCoordinator[Dict[str, PurpleAirApiSensorData]]
     expected_entries: int = 0
 
 
@@ -60,7 +61,7 @@ class PurpleAirDomainData():
 class PurpleAirSensorEntityDescription(SensorEntityDescription):
     """Class describing PurpleAir sensor entities."""
 
-    device_class: str = ''
+    device_class: str = ""
     enable_default: bool = False
     primary: bool = False
-    unique_id_suffix: str = ''
+    unique_id_suffix: str = ""

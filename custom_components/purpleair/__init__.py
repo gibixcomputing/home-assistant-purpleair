@@ -2,10 +2,9 @@
 """The PurpleAir integration."""
 from __future__ import annotations
 
-import logging
-from datetime import timedelta
-
 import asyncio
+from datetime import timedelta
+import logging
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -26,14 +25,14 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     """Migrate configuration entry."""
-    _LOGGER.debug('Migrating from version %s', config_entry.version)
+    _LOGGER.debug("Migrating from version %s", config_entry.version)
 
     # Version 2: use "node_id" as configuration key
     if config_entry.version == 1:
         data = {**config_entry.data}
 
-        data['node_id'] = data['id']
-        del data['id']
+        data["node_id"] = data["id"]
+        del data["id"]
 
         config_entry.data = {**data}
 
@@ -43,8 +42,8 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     if config_entry.version == 2:
         data = {**config_entry.data}
 
-        data['pa_sensor_id'] = data['node_id']
-        del data['node_id']
+        data["pa_sensor_id"] = data["node_id"]
+        del data["node_id"]
 
         config_entry.data = {**data}
 
@@ -60,7 +59,7 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 
         config_entry.version = 4
 
-    _LOGGER.debug('Migration to version %s successful', config_entry.version)
+    _LOGGER.debug("Migration to version %s successful", config_entry.version)
     return True
 
 
@@ -72,7 +71,7 @@ async def async_setup(hass: HomeAssistant, config: dict):
     coordinator = DataUpdateCoordinator(
         hass,
         _LOGGER,
-        name='purpleair',
+        name="purpleair",
         update_method=api.update,
         update_interval=timedelta(seconds=SCAN_INTERVAL),
     )
@@ -101,9 +100,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     # remove air_quality entities from the registry if they exist
     ent_reg = entity_registry.async_get(hass)
-    unique_id = f'{entry.unique_id}_air_quality'
-    if entity_id := ent_reg.async_get_entity_id('air_quality', DOMAIN, unique_id):
-        _LOGGER.debug('Removing deprecated air_quality entity %s', entity_id)
+    unique_id = f"{entry.unique_id}_air_quality"
+    if entity_id := ent_reg.async_get_entity_id("air_quality", DOMAIN, unique_id):
+        _LOGGER.debug("Removing deprecated air_quality entity %s", entity_id)
         ent_reg.async_remove(entity_id)
 
     return True
@@ -127,7 +126,7 @@ async def async_remove_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     """Unregisters the sensor from the API when the entry is removed."""
 
     config = PurpleAirConfigEntry(**config_entry.data)
-    _LOGGER.debug('unregistering entry %s from api', config.pa_sensor_id)
+    _LOGGER.debug("unregistering entry %s from api", config.pa_sensor_id)
 
     api = hass.data[DOMAIN].api
     api.unregister_sensor(config.pa_sensor_id)

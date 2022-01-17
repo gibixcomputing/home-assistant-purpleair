@@ -1,0 +1,21 @@
+# For testing requirements
+pytest
+pytest-cov
+# target HA 2021.11.5
+black
+isort
+pytest-homeassistant-custom-component==0.4.12
+
+# extra requirements for pylint
+pycodestyle==2.8.0
+pyflakes==2.4.0
+flake8-docstrings==1.6.0
+pydocstyle==6.1.1
+flake8-comprehensions==3.7.0
+flake8-noqa==1.2.1
+mccabe==0.6.1
+
+# Local packages installed prior to requirements file
+flake8==3.9.2
+mypy==0.910
+pylint==2.10.2

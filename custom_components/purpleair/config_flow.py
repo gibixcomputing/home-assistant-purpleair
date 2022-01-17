@@ -5,21 +5,20 @@ from __future__ import annotations
 import logging
 from typing import Final
 
-import voluptuous as vol
-
-from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import CONN_CLASS_CLOUD_POLL, ConfigFlow
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+import voluptuous as vol
 
 from .const import DOMAIN
 from .model import PurpleAirConfigEntry
-from .purple_air_api.v1.util import get_api_sensor_config
 from .purple_air_api.exceptions import (
     PurpleAirApiInvalidResponseError,
     PurpleAirApiStatusError,
     PurpleAirApiUrlError,
 )
+from .purple_air_api.v1.util import get_api_sensor_config
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,8 +28,7 @@ CONF_PA_SENSOR_READ_KEY: Final = "sensor_read_key"
 
 
 async def get_sensor_config(
-    hass: HomeAssistant,
-    user_input: dict[str, str]
+    hass: HomeAssistant, user_input: dict[str, str]
 ) -> PurpleAirConfigEntry:
     """
     Creates a PurpleAirConfigEntry by passing the given user_input to get_api_sensor_config.
@@ -49,7 +47,9 @@ async def get_sensor_config(
     pa_sensor_id = config_validation.string(user_input.get(CONF_PA_SENSOR_ID))
     pa_sensor_read_key = user_input.get(CONF_PA_SENSOR_READ_KEY)
 
-    pa_sensor = await get_api_sensor_config(session, api_key, pa_sensor_id, pa_sensor_read_key)
+    pa_sensor = await get_api_sensor_config(
+        session, api_key, pa_sensor_id, pa_sensor_read_key
+    )
 
     config = PurpleAirConfigEntry(
         pa_sensor_id=pa_sensor.pa_sensor_id,
@@ -64,7 +64,7 @@ async def get_sensor_config(
     return config
 
 
-class PurpleAirConfigFlow(ConfigFlow, domain=DOMAIN):
+class PurpleAirConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore
     """Configuration flow for setting up a new PurpleAir Sensor."""
 
     VERSION = 4
@@ -86,16 +86,26 @@ class PurpleAirConfigFlow(ConfigFlow, domain=DOMAIN):
                 _LOGGER.exception("err", exc_info=error)
                 errors["url"] = "url"
             except PurpleAirApiStatusError as error:
-                _LOGGER.exception("PurpleAir API returned bad status code %s\nData:\n%s",
-                                  error.status, error.text, exc_info=error)
+                _LOGGER.exception(
+                    "PurpleAir API returned bad status code %s\nData:\n%s",
+                    error.status,
+                    error.text,
+                    exc_info=error,
+                )
                 errors["base"] = "bad_status"
             except PurpleAirApiInvalidResponseError as error:
-                _LOGGER.exception("PurpleAir API returned invalid data.\nMessage: %s\nData: %s",
-                                  error.message, error.data, exc_info=error)
+                _LOGGER.exception(
+                    "PurpleAir API returned invalid data.\nMessage: %s\nData: %s",
+                    error.message,
+                    error.data,
+                    exc_info=error,
+                )
                 errors["base"] = "bad_data"
             except Exception as error:  # pylint: disable=broad-except
-                _LOGGER.exception("An unknown error occurred while setting up the PurpleAir Sensor",
-                                  exc_info=error)
+                _LOGGER.exception(
+                    "An unknown error occurred while setting up the PurpleAir Sensor",
+                    exc_info=error,
+                )
                 errors["base"] = "unknown"
 
         data_schema = vol.Schema(

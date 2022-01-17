@@ -16,6 +16,7 @@ class PurpleAirApiConfigEntry:
         hidden       -- Flag indicating whether the sensor is private or public
         key          -- Key used when retrieving sensor data. Must be provided if hidden is True.
     """
+
     pa_sensor_id: str
     title: str
     hidden: bool
@@ -63,8 +64,8 @@ class PurpleAirApiSensorReading:  # pylint: disable=too-many-instance-attributes
 
     def both_channels_have_data(self) -> bool:
         """Determines if both internal channel dictionaries have usable values."""
-        channel_a = self.channels.get('A', {})
-        channel_b = self.channels.get('B', {})
+        channel_a = self.channels.get("A", {})
+        channel_b = self.channels.get("B", {})
         a_has_data = bool(channel_a and not all(v is None for v in channel_a.values()))
         b_has_data = bool(channel_b and not all(v is None for v in channel_b.values()))
 
@@ -79,7 +80,7 @@ class PurpleAirApiSensorReading:  # pylint: disable=too-many-instance-attributes
         Gets the internal channel readings dictionary for channel A or B. Raises an AttributeError
         if the channel is not in the set('A', 'B').
         """
-        if channel not in ['A', 'B']:
+        if channel not in ["A", "B"]:
             raise AttributeError('Unsupported channel requested, must be "A" or "B"')
 
         data = self.channels.get(channel)
@@ -91,11 +92,11 @@ class PurpleAirApiSensorReading:  # pylint: disable=too-many-instance-attributes
 
     def get_confidence(self, attr: str) -> str:
         """Gets the given sensor confidence value."""
-        return self.confidence.get(attr, '')
+        return self.confidence.get(attr, "")
 
     def get_status(self, attr: str) -> str:
         """Gets the given sensor attribute status."""
-        return self.status.get(attr, '')
+        return self.status.get(attr, "")
 
     def get_value(self, attr: str) -> Union[int, float]:
         """Gets the given sensor attribute reading."""
@@ -106,7 +107,10 @@ class PurpleAirApiSensorReading:  # pylint: disable=too-many-instance-attributes
         self.status[attr] = status
 
     def set_value(
-            self, attr: str, value: Optional[Union[int, float]], confidence: Optional[str] = None
+        self,
+        attr: str,
+        value: Optional[Union[int, float]],
+        confidence: Optional[str] = None,
     ):
         """
         Sets the computed value for the given sensor attribute with an optional value and confidence
@@ -139,14 +143,17 @@ class PurpleAirApiSensorData:  # pylint: disable=too-many-instance-attributes
         adc             -- Current reported ADC voltage of the sensor.
         uptime          -- Current uptime reported by the sensor.
     """
+
     pa_sensor_id: str
     label: str
     last_seen: datetime
     last_update: datetime
-    readings: PurpleAirApiSensorReading = field(default_factory=PurpleAirApiSensorReading)
-    device_location: str = 'unknown'
-    version: str = 'unknown'
-    type: str = 'unknown'
+    readings: PurpleAirApiSensorReading = field(
+        default_factory=PurpleAirApiSensorReading
+    )
+    device_location: str = "unknown"
+    version: str = "unknown"
+    type: str = "unknown"
     lat: Optional[float] = None
     lon: Optional[float] = None
     rssi: float = 0
@@ -164,6 +171,7 @@ class AqiBreakpoint:
         aqi_low  -- The low end of the calculated AQI
         aqi_high -- The high end of the calculated AQI
     """
+
     pm_low: float
     pm_high: float
     aqi_low: float
@@ -179,6 +187,7 @@ class EpaAvgValue:
         pm25 -- List of last PM2.5 CF=1 readings
         timestamp -- Date the value reading was created
     """
+
     hum: float
     pm25: float
     timestamp: datetime = field(default_factory=datetime.utcnow)

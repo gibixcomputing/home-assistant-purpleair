@@ -40,7 +40,9 @@ class PurpleAirApiStatusError(PurpleAirApiError):
     """
 
     def __init__(self, url: str, status: int, text: str):
-        super().__init__('An error occurred while communicating with the PurpleAir API.')
+        super().__init__(
+            "An error occurred while communicating with the PurpleAir API."
+        )
         self.url = url
         self.status = status
         self.text = text

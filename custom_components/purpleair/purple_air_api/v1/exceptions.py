@@ -1,3 +1,5 @@
+"""Exceptions for the v1 PurpleAir API."""
+
 from ..exceptions import PurpleAirApiError
 
 
@@ -11,6 +13,8 @@ class PurpleAirApiConfigError(PurpleAirApiError):
     """
 
     def __init__(self, param: str, extra: str = None):
-        super().__init__("Invalid configuration parameter: {} (extra: {})".format(param, extra))
+        super().__init__(
+            "Invalid configuration parameter: {} (extra: {})".format(param, extra)
+        )
         self.param = param
         self.extra = extra

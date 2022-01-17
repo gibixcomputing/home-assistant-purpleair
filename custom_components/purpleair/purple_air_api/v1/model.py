@@ -1,3 +1,5 @@
+"""Models for the v1 PurpleAir API."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -14,6 +16,7 @@ class ApiConfigEntry:
       hidden: Flag indicating whether the sensor is private or public.
       key: Sensor read key used when retriving data from a hidden sensor.
     """
+
     pa_sensor_id: str
     name: str
     hidden: bool

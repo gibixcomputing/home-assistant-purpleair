@@ -1,7 +1,8 @@
+"""Utility functions for the v1 PurpleAir API."""
 from __future__ import annotations
 
-import logging
 from http import HTTPStatus
+import logging
 from typing import Dict
 
 from aiohttp import ClientResponse, ClientSession
@@ -17,7 +18,7 @@ async def get_api_sensor_config(
     session: ClientSession,
     api_key: str,
     pa_sensor_id: str,
-    pa_sensor_read_key: str = None
+    pa_sensor_read_key: str = None,
 ) -> ApiConfigEntry:
     """
     Gets a configuration from the API for the sensor given the data provided. Provide your PurpleAir
@@ -72,9 +73,7 @@ async def get_api_sensor_config(
     ]
 
     url = URL_API_V1_SENSOR.format(pa_sensor_id=pa_sensor_id)
-    params = {
-        "fields": ",".join(config_fields)
-    }
+    params = {"fields": ",".join(config_fields)}
 
     if pa_sensor_read_key:
         params["read_key"] = str(pa_sensor_read_key)
@@ -100,7 +99,8 @@ async def _get_sensor_data_from_api(resp: ClientResponse) -> Dict:
     # don't parse as json if > HTTP 500
     if resp.status >= HTTPStatus.INTERNAL_SERVER_ERROR:
         _LOGGER.error(
-            "(get_api_sensor_config) PurpleAir reported a server error: %s", resp.reason)
+            "(get_api_sensor_config) PurpleAir reported a server error: %s", resp.reason
+        )
         raise PurpleAirApiConfigError("server_error", resp.reason)
 
     data = await resp.json()
@@ -115,7 +115,8 @@ async def _get_sensor_data_from_api(resp: ClientResponse) -> Dict:
                 raise PurpleAirApiConfigError("pa_sensor_id", "bad_read_key")
 
             _LOGGER.error(
-                "Bad request error from PurpleAirApi during configuration: %s", data)
+                "Bad request error from PurpleAirApi during configuration: %s", data
+            )
             raise PurpleAirApiConfigError("bad_request", data.get("description"))
 
     return data.get("sensor")
