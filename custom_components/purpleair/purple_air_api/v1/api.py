@@ -19,6 +19,7 @@ from .const import (
 )
 from .model import ApiConfigEntry, DeviceReading, NormalizedApiData, SensorReading
 from .responses import ApiErrorResponse, ApiResponse, ApiSensorResponse
+from .util import apply_sensor_corrections
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -153,6 +154,7 @@ class PurpleAirApiV1:
         data = cast(ApiSensorResponse, raw_data)
         _update_fields_position(fields, data["fields"])
         sensor_data = _read_sensor_data(fields, data, self.do_device_update)
+        apply_sensor_corrections(sensor_data)
 
         _LOGGER.debug("sensor data: %s", sensor_data)
 

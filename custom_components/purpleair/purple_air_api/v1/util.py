@@ -8,9 +8,44 @@ from aiohttp import ClientResponse, ClientSession
 
 from .const import URL_API_V1_KEYS_URL, URL_API_V1_SENSOR
 from .exceptions import PurpleAirApiConfigError
-from .model import ApiConfigEntry
+from .model import ApiConfigEntry, NormalizedApiData
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def apply_sensor_corrections(sensors: dict[str, NormalizedApiData]) -> None:
+    """
+    Apply corrections to incoming sensor data using known adjustment values.
+
+    The sensors for temperature and humidity are known to be slightly outside of
+    real values, this will apply a blanket correction of subtracting 8°F from the
+    temperature and adding 4% to the humidity value. This is documented as the
+    average variance for those two sensor values.
+
+    From the docs:
+    - Humidity:
+        Relative humidity inside of the sensor housing (%). On average, this is
+        4% lower than ambient conditions. Null if not equipped.
+    - Temperature:
+        Temperature inside of the sensor housing (F). On average, this is 8F
+        higher than ambient conditions. Null if not equipped.
+    """
+
+    for sensor_data in sensors.values():
+        sensor = sensor_data["sensor"]
+        if temperature := sensor.temperature:
+            sensor.temperature = temperature - 8
+            _LOGGER.debug(
+                "applied temperature correction from %s to %s",
+                temperature,
+                sensor.temperature,
+            )
+
+        if humidity := sensor.humidity:
+            sensor.humidity = humidity + 4
+            _LOGGER.debug(
+                "applied humidity correction from %s to %s", humidity, sensor.humidity
+            )
 
 
 async def get_api_sensor_config(
