@@ -17,9 +17,15 @@ from .const import (
     API_TIMESTAMP_VALUES,
     URL_API_V1_SENSORS,
 )
-from .model import ApiConfigEntry, DeviceReading, NormalizedApiData, SensorReading
+from .model import (
+    ApiConfigEntry,
+    DeviceReading,
+    EpaAvgValueCache,
+    NormalizedApiData,
+    SensorReading,
+)
 from .responses import ApiErrorResponse, ApiResponse, ApiSensorResponse
-from .util import apply_sensor_corrections
+from .util import add_aqi_calculations, apply_sensor_corrections, create_epa_value_cache
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -31,6 +37,7 @@ class PurpleAirApiV1:
     sensors: dict[str, ApiConfigEntry]
     session: ClientSession
     _api_issues: bool
+    _cache: EpaAvgValueCache
     _headers: dict[str, str]
     _last_device_refresh: datetime | None
 
@@ -41,6 +48,7 @@ class PurpleAirApiV1:
         self.sensors = {}
         self.session = session
         self._api_issues = False
+        self._cache = create_epa_value_cache()
         self._headers = {
             "Accept": "application/json",
             "X-API-Key": api_key,
@@ -82,7 +90,7 @@ class PurpleAirApiV1:
         del self.sensors[pa_sensor_id]
         _LOGGER.debug("unregistered sensor: %s", pa_sensor_id)
 
-    async def async_update(self) -> None:
+    async def async_update(self) -> dict[str, NormalizedApiData] | None:
         """Handle updating data from the v1 PurpleAir API."""
 
         sensor_ids = {s.pa_sensor_id for s in self.sensors.values()}
@@ -133,7 +141,7 @@ class PurpleAirApiV1:
                 _LOGGER.error(
                     "PurpleAir API server error: %s %s", resp.status, resp.reason
                 )
-                return
+                return None
 
             raw_data: ApiResponse = await resp.json()
 
@@ -147,7 +155,7 @@ class PurpleAirApiV1:
                     error_data["description"],
                     error_data["error"],
                 )
-                return
+                return None
 
         _LOGGER.debug("raw data: %s", raw_data)
 
@@ -155,8 +163,10 @@ class PurpleAirApiV1:
         _update_fields_position(fields, data["fields"])
         sensor_data = _read_sensor_data(fields, data, self.do_device_update)
         apply_sensor_corrections(sensor_data)
+        add_aqi_calculations(sensor_data, cache=self._cache)
 
         _LOGGER.debug("sensor data: %s", sensor_data)
+        return sensor_data
 
     @property
     def do_device_update(self) -> bool:

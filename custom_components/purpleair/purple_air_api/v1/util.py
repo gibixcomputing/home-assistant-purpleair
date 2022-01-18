@@ -1,16 +1,84 @@
 """Utility functions for the v1 PurpleAir API."""
 from __future__ import annotations
 
+from collections import defaultdict, deque
+from datetime import datetime, timedelta
 from http import HTTPStatus
 import logging
+from math import fsum
 
 from aiohttp import ClientResponse, ClientSession
 
+from .aqi_breakpoints import AQI_BREAKPOINTS
 from .const import URL_API_V1_KEYS_URL, URL_API_V1_SENSOR
 from .exceptions import PurpleAirApiConfigError
-from .model import ApiConfigEntry, NormalizedApiData
+from .model import (
+    ApiConfigEntry,
+    EpaAvgValue,
+    EpaAvgValueCache,
+    NormalizedApiData,
+    SensorReading,
+)
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def add_aqi_calculations(
+    sensors: dict[str, NormalizedApiData], *, cache: EpaAvgValueCache
+) -> None:
+    """
+    Add AQI calculations as custom properties to the readings.
+
+    This computes the AQI values by calculating them based off the corrections
+    and breakpoints, providing a few variations depending what is available.
+    """
+
+    for sensor_data in sensors.values():
+        sensor = sensor_data["sensor"]
+        if sensor.pm2_5_atm:
+            instant_aqi = calc_aqi(sensor.pm2_5_atm, "pm2_5")
+            sensor.set_additional_value("pm2_5_aqi_instant", instant_aqi)
+
+        # If we have the PM2.5 CF=1 and humidity data, we can calculate AQI using the EPA
+        # corrections that were identified to better calibrate PurpleAir sensors to the EPA NowCast
+        # AQI formula. This was identified during the 2020 wildfire season and better represents AQI
+        # with wildfire smoke for the unhealthy for sensitive groups/unhealthy for everyone AQI
+        # breakpoints. Unlike the raw AQI sensor, this is averaged over the last hour. For
+        # simplicity, this is applied here as a rolling hour average and provides instant results as
+        # readings are provided. Readings over an hour old will be removed from the cache.
+        #
+        # The formula is identified as: PM2.5 corrected= 0.534*[PA_cf1(avgAB)] - 0.0844*RH +5.604
+        # NOTE: we check for None explicitly since 0 is a valid number
+        if sensor.pm2_5_cf_1 is not None and sensor.humidity is not None:
+            epa_avg = cache[sensor.pa_sensor_id]
+            epa_avg.append(EpaAvgValue(hum=sensor.humidity, pm25=sensor.pm2_5_cf_1))
+
+            _clean_expired_cache_entries(sensor, epa_avg)
+
+            humidity_avg = round(fsum(v.hum for v in epa_avg) / len(epa_avg), 5)
+            pm25cf1_avg = round(fsum(v.pm25 for v in epa_avg) / len(epa_avg), 5)
+
+            pm25_corrected = round(
+                (0.534 * pm25cf1_avg) - (0.0844 * humidity_avg) + 5.604, 1
+            )
+            pm25_corrected_aqi = calc_aqi(pm25_corrected, "pm2_5")
+
+            _LOGGER.debug(
+                "(%s): EPA correction: (pm25: %s, hum: %s, corrected: %s, aqi: %s)",
+                sensor.pa_sensor_id,
+                pm25cf1_avg,
+                humidity_avg,
+                pm25_corrected,
+                pm25_corrected_aqi,
+            )
+
+            aqi_status = "stable"
+            count = len(epa_avg)
+            if count < 12:
+                aqi_status = f"calculating ({(12 - count) * 5} mins left)"
+
+            sensor.set_additional_value("pm2_5_aqi_epa", pm25_corrected_aqi)
+            sensor.set_additional_value("pm2_5_aqi_epa_status", aqi_status)
 
 
 def apply_sensor_corrections(sensors: dict[str, NormalizedApiData]) -> None:
@@ -46,6 +114,39 @@ def apply_sensor_corrections(sensors: dict[str, NormalizedApiData]) -> None:
             _LOGGER.debug(
                 "applied humidity correction from %s to %s", humidity, sensor.humidity
             )
+
+
+def calc_aqi(value: float, index: str) -> int | None:
+    """
+    Calculate the air quality index based off the available conversion data.
+
+    This uses the sensors current Particulate Matter 2.5 value. Returns an AQI
+    between 0 and 999 or None if the sensor reading is invalid.
+
+    See AQI_BREAKPOINTS in const.py.
+    """
+
+    if index not in AQI_BREAKPOINTS:
+        _LOGGER.debug("calc_aqi requested for unknown type: %s", index)
+        return None
+
+    aqi_bp_index = AQI_BREAKPOINTS[index]
+    aqi_bp = next((bp for bp in aqi_bp_index if bp.pm_low <= value <= bp.pm_high), None)
+
+    if not aqi_bp:
+        _LOGGER.debug("value %s did not fall in valid range for type %s", value, index)
+        return None
+
+    aqi_range = aqi_bp.aqi_high - aqi_bp.aqi_low
+    pm_range = aqi_bp.pm_high - aqi_bp.pm_low
+    aqi_c = value - aqi_bp.pm_low
+    return round((aqi_range / pm_range) * aqi_c + aqi_bp.aqi_low)
+
+
+def create_epa_value_cache() -> EpaAvgValueCache:
+    """Create a new, empty EPA value cache."""
+    cache: EpaAvgValueCache = defaultdict(lambda: deque(maxlen=12))
+    return cache
 
 
 async def get_api_sensor_config(
@@ -158,3 +259,17 @@ async def _get_sensor_data_from_api(resp: ClientResponse) -> dict:
             raise PurpleAirApiConfigError("bad_request", data.get("description"))
 
     return data.get("sensor")
+
+
+def _clean_expired_cache_entries(pa_sensor: SensorReading, epa_avg: deque[EpaAvgValue]):
+    """Clean out any old cache entries older than an hour."""
+    hour_ago = datetime.utcnow() - timedelta(seconds=3600)
+    expired_count = sum(1 for v in epa_avg if v.timestamp < hour_ago)
+    if expired_count:
+        _LOGGER.info(
+            'PuprleAir Sensor "%s" EPA readings contained %s old entries in cache',
+            pa_sensor.pa_sensor_id,
+            expired_count,
+        )
+        for _ in range(expired_count):
+            epa_avg.popleft()
