@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from http import HTTPStatus
 import logging
-from typing import Any, cast
+from typing import cast
 
 from aiohttp import ClientSession
 
@@ -17,7 +17,7 @@ from .const import (
     API_TIMESTAMP_VALUES,
     URL_API_V1_SENSORS,
 )
-from .model import ApiConfigEntry
+from .model import ApiConfigEntry, DeviceReading, NormalizedApiData, SensorReading
 from .responses import ApiErrorResponse, ApiResponse, ApiSensorResponse
 
 _LOGGER = logging.getLogger(__name__)
@@ -152,7 +152,7 @@ class PurpleAirApiV1:
 
         data = cast(ApiSensorResponse, raw_data)
         _update_fields_position(fields, data["fields"])
-        sensor_data = _read_sensor_data(fields, data)
+        sensor_data = _read_sensor_data(fields, data, self.do_device_update)
 
         _LOGGER.debug("sensor data: %s", sensor_data)
 
@@ -185,47 +185,59 @@ def _update_fields_position(fields: dict[str, int], api_fields: list[str]) -> No
         )
 
 
-def _read_sensor_data(fields: dict[str, int], data: ApiSensorResponse) -> dict:
-    processed_data = {}
+def _read_sensor_data(
+    fields: dict[str, int], data: ApiSensorResponse, include_device_data: bool = False
+) -> dict[str, NormalizedApiData]:
+    processed_data: dict[str, NormalizedApiData] = {}
 
     for raw_sensor in data["data"]:
         pa_sensor_id = str(raw_sensor[fields["sensor_index"]])
-        sensor_data: dict[str, Any] = {}
+        sensor_data = SensorReading(pa_sensor_id)
+        device_data = DeviceReading(pa_sensor_id) if include_device_data else None
 
         for field, index in fields.items():
             # skip over the sensor index field
             if field == "sensor_index":
                 continue
 
+            value = None
+
             if field in API_INT_VALUES:
                 value = raw_sensor[index]
-                sensor_data[field] = int(value) if value else None
+                value = int(value) if value else None
 
             if field in API_FLOAT_VALUES:
                 value = raw_sensor[index]
-                sensor_data[field] = float(value) if value else 0.0
+                value = float(value) if value else 0.0
 
             if field in API_STRING_VALUES:
                 value = raw_sensor[index]
-                sensor_data[field] = str(value) if value else ""
+                value = str(value) if value else ""
 
             if field in API_TIMESTAMP_VALUES:
                 value = raw_sensor[index]
-                sensor_data[field] = (
-                    datetime.fromtimestamp(value, timezone.utc) if value else None
-                )
+                value = datetime.fromtimestamp(value, timezone.utc) if value else None
 
             if field in API_SPECIAL_VALUES:
                 special_index = raw_sensor[index]
+                value = None
                 if field == "location_type":
-                    sensor_data[field] = str(data["location_types"][special_index])
+                    value = str(data["location_types"][special_index])
                 elif field == "private":
-                    sensor_data[field] = raw_sensor[index] == "1"
+                    value = raw_sensor[index] == "1"
                 elif field == "channel_state":
-                    sensor_data[field] = str(data["channel_states"][special_index])
+                    value = str(data["channel_states"][special_index])
                 elif field == "channel_flags":
-                    sensor_data[field] = str(data["channel_flags"][special_index])
+                    value = str(data["channel_flags"][special_index])
 
-            processed_data[pa_sensor_id] = sensor_data
+            sensor_data.set_value(field, value)
+
+            if device_data:
+                device_data.set_value(field, value)
+
+        processed_data[pa_sensor_id] = {
+            "sensor": sensor_data,
+            "device": device_data,
+        }
 
     return processed_data

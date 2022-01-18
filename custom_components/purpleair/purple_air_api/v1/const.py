@@ -23,7 +23,7 @@ API_FLOAT_VALUES: Final = [
     "longitude",
     "pm1.0_atm",
     "pm2.5_atm",
-    "pm2.5_cf_1,",
+    "pm2.5_cf_1",
     "pm10.0_atm",
     "pressure",
 ]
@@ -45,3 +45,11 @@ API_SPECIAL_VALUES: Final = [
 API_TIMESTAMP_VALUES: Final = [
     "last_seen",
 ]
+
+API_VALUES: Final = set(
+    API_INT_VALUES
+    + API_FLOAT_VALUES
+    + API_STRING_VALUES
+    + API_SPECIAL_VALUES
+    + API_TIMESTAMP_VALUES
+)
