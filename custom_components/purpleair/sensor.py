@@ -21,6 +21,7 @@ from .model import (
     PurpleAirSensorEntityDescription,
 )
 from .purple_air_api.model import PurpleAirApiSensorData, PurpleAirApiSensorReading
+from .sensor_v1 import async_setup_entry as async_setup_entry_v1
 
 PARALLEL_UPDATES = 1
 
@@ -40,11 +41,13 @@ async def async_setup_entry(
     domain_data: PurpleAirDomainData = hass.data[DOMAIN]
     coordinator = domain_data.coordinator
 
-    pa_sensors: list[PurpleAirSensor] = []
     if config.api_version == 0 and (coordinator := domain_data.coordinator):
         pa_sensors = _add_legacy_sensors(hass, config, coordinator)
+        async_schedule_add_entities(pa_sensors, False)
 
-    async_schedule_add_entities(pa_sensors, False)
+    # forward API v1 configs to the v1 sensors.
+    if config.api_version == 1:
+        await async_setup_entry_v1(hass, config_entry, async_schedule_add_entities)
 
 
 def _add_legacy_sensors(
