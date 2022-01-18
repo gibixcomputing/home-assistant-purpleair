@@ -9,12 +9,12 @@ from types import MappingProxyType
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import entity_registry
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import DOMAIN, SCAN_INTERVAL
+from .coordinator import PurpleAirDataUpdateCoordinator
 from .model import PurpleAirConfigEntry, PurpleAirDomainData
 from .purple_air_api import PurpleAirApi
 from .purple_air_api.v1.api import PurpleAirApiV1
@@ -99,8 +99,29 @@ async def async_setup(hass: HomeAssistant, config: dict):
 
     if has_new_api:
         _LOGGER.info("Adding support for v1 PurpleAir sensors.")
-        api_v1 = PurpleAirApiV1()
-        coordinator_v1 = None
+
+        api_keys: set[str] = {
+            e.data.get("api_key", "")
+            for e in entries
+            if e.data.get("api_key") and e.data.get("api_version") == 1
+        }
+        api_key = api_keys.pop() if len(api_keys) == 1 else ""
+
+        if not api_key:
+            _LOGGER.error(
+                "Zero keys or more than one v1 API key found (%s). This component requires exactly one API key to be configured.",
+                len(api_keys),
+            )
+            return False
+
+        api_v1 = PurpleAirApiV1(session, api_key)
+        coordinator_v1 = PurpleAirDataUpdateCoordinator(
+            api_v1,
+            hass,
+            _LOGGER,
+            name="purpleair_v1",
+            update_interval=timedelta(seconds=SCAN_INTERVAL),
+        )
 
     hass.data[DOMAIN] = PurpleAirDomainData(
         api=api_v0,
@@ -137,7 +158,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         return await _async_register_legacy_sensor(config, domain_data)
 
     if config.api_version == 1:
-        raise ConfigEntryNotReady()
+        return await _async_register_v1_sensor(config, domain_data)
 
     # default failure if api_version is not recognized
     return False
@@ -161,16 +182,20 @@ async def async_remove_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     """Unregisters the sensor from the API when the entry is removed."""
 
     config = PurpleAirConfigEntry(**config_entry.data)
+    domain_data: PurpleAirDomainData = hass.data[DOMAIN]
+
     _LOGGER.debug("unregistering entry %s from api", config.pa_sensor_id)
 
     # clean up legacy sensors on removal.
-    if config.api_version == 0:
+    if config.api_version == 0 and (coordinator_v0 := domain_data.coordinator):
         api = hass.data[DOMAIN].api
         api.unregister_sensor(config.pa_sensor_id)
 
-        coordinator = hass.data[DOMAIN].coordinator
-        if config.pa_sensor_id in coordinator.data:
-            del coordinator.data[config.pa_sensor_id]
+        if config.pa_sensor_id in coordinator_v0.data:
+            del coordinator_v0.data[config.pa_sensor_id]
+
+    if config.api_version == 1 and (coordinator_v1 := domain_data.coordinator_v1):
+        coordinator_v1.unregister_sensor(config.pa_sensor_id)
 
 
 async def _async_register_legacy_sensor(
@@ -206,5 +231,40 @@ async def _async_register_legacy_sensor(
     ):  # skips refresh if enabling extra sensors
         await coordinator_v0.async_config_entry_first_refresh()
         domain_data.expected_entries = 0
+
+    return True
+
+
+async def _async_register_v1_sensor(
+    config: PurpleAirConfigEntry, domain_data: PurpleAirDomainData
+) -> bool:
+    coordinator_v1 = domain_data.coordinator_v1
+
+    if not coordinator_v1:
+        _LOGGER.error(
+            "Unable to register PA sensor %s due to invalid domain setup",
+            config.pa_sensor_id,
+        )
+        return False
+
+    coordinator_v1.register_sensor(
+        config.pa_sensor_id,
+        config.title,
+        config.hidden,
+        config.key,
+    )
+
+    # check for the number of registered sensor during startup to only request
+    # an update once all expected sensors are registered.
+    if (
+        # expected_entries will be 0/None if this is the first one
+        not domain_data.expected_entries_v1
+        # safety for not spamming at startup
+        or coordinator_v1.get_sensor_count() == domain_data.expected_entries_v1
+    ) and not coordinator_v1.data.get(
+        config.pa_sensor_id
+    ):  # skips refresh if enabling extra sensors
+        await coordinator_v1.async_config_entry_first_refresh()
+        domain_data.expected_entries_v1 = 0
 
     return True

@@ -90,7 +90,7 @@ async def get_api_sensor_config(
         pa_sensor_id=str(sensor_data.get("sensor_index")),
         name=str(sensor_data.get("name")),
         hidden=hidden,
-        key=str(sensor_data.get("primary_key_a")) if hidden else None,
+        read_key=str(sensor_data.get("primary_key_a")) if hidden else None,
     )
 
     _LOGGER.debug("(get_api_sensor_config) generated configuration: %s", config)

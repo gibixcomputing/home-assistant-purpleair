@@ -9,6 +9,7 @@ from homeassistant.components.sensor import SensorEntityDescription
 if TYPE_CHECKING:
     from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
+    from .coordinator import PurpleAirDataUpdateCoordinator
     from .purple_air_api import PurpleAirApi
     from .purple_air_api.model import PurpleAirApiSensorData
     from .purple_air_api.v1.api import PurpleAirApiV1
@@ -73,7 +74,7 @@ class PurpleAirDomainData:
     api: PurpleAirApi | None = None
     api_v1: PurpleAirApiV1 | None = None
     coordinator: DataUpdateCoordinator[dict[str, PurpleAirApiSensorData]] | None = None
-    coordinator_v1: DataUpdateCoordinator | None = None
+    coordinator_v1: PurpleAirDataUpdateCoordinator | None = None
     expected_entries: int = 0
     expected_entries_v1: int = 0
 

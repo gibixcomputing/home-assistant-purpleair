@@ -53,7 +53,7 @@ async def get_sensor_config(
     config = PurpleAirConfigEntry(
         pa_sensor_id=pa_sensor.pa_sensor_id,
         title=pa_sensor.name,
-        key=pa_sensor.key,
+        key=pa_sensor.read_key,
         hidden=pa_sensor.hidden,
         api_key=api_key,
         api_version=1,

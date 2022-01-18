@@ -92,6 +92,7 @@ disable = [
     "unused-argument",
     "wrong-import-order",
     "consider-using-f-string",
+    "fixme",  # temporary
     #"consider-using-namedtuple-or-dataclass",
     #"consider-using-assignment-expr",
 ]
