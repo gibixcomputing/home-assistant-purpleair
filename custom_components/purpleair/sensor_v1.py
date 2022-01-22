@@ -11,7 +11,7 @@ from homeassistant.util import dt
 from .const import DOMAIN
 from .model import PurpleAirConfigEntry, PurpleAirDomainData
 from .purple_air_api.v1.model import NormalizedApiData
-from .sensor_descriptions import AqiSensorDescription
+from .sensor_descriptions import SIMPLE_SENSOR_DESCRIPTIONS, AqiSensorDescription
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -43,6 +43,11 @@ async def async_setup_entry(
     # we will expose only one AQI sensor here for future 2021.12 option flow
     entities: list[Entity] = [PurpleAirAqiSensor(config, coordinator_v1)]
 
+    for sensor_description in SIMPLE_SENSOR_DESCRIPTIONS:
+        entities.append(
+            PurpleAirSimpleSensor(config, coordinator_v1, sensor_description)
+        )
+
     async_schedule_add_entities(entities, False)
 
 
@@ -53,6 +58,7 @@ class PASensorBase(CoordinatorEntity[Dict[str, NormalizedApiData]]):
 
     pa_sensor_id: str
     pa_sensor_name: str
+    entity_description: PASensorDescription
 
     def __init__(
         self,
@@ -69,7 +75,7 @@ class PASensorBase(CoordinatorEntity[Dict[str, NormalizedApiData]]):
         self.pa_sensor_name = config.title
 
         self._attr_name = f"{self.pa_sensor_name} {self.entity_description.name}"
-        self._attr_unique_id = f"{self.pa_sensor_id}_{self.entity_description.suffix}"
+        self._attr_unique_id = f"{self.pa_sensor_id}_{self.entity_description.key}"
         self._attr_device_info = {
             "identifiers": {(DOMAIN, self.pa_sensor_id)},
             "default_name": self.pa_sensor_name,
@@ -80,6 +86,22 @@ class PASensorBase(CoordinatorEntity[Dict[str, NormalizedApiData]]):
     def _get_sensor_data(self) -> SensorReading | None:
         sensor_data = self.coordinator.data.get(self.pa_sensor_id)
         return sensor_data["sensor"] if sensor_data else None
+
+    @property
+    def available(self):
+        """Get the availability of the sensor."""
+
+        return self.native_value is not None
+
+    @property
+    def native_value(self):
+        """Get the native value for the sensor."""
+
+        if not self.entity_description.attr_name:
+            return None
+
+        data = self._get_sensor_data()
+        return getattr(data, self.entity_description.attr_name) if data else None
 
 
 class PurpleAirAqiSensor(PASensorBase, SensorEntity):
@@ -113,7 +135,7 @@ class PurpleAirAqiSensor(PASensorBase, SensorEntity):
             if not self._warn_stale:
                 _LOGGER.warning(
                     'PurpleAir Sensor "%s" (%s) has not sent data over 90 mins. Last update was %s',
-                    self.name,
+                    self.entity_description.name,
                     self.pa_sensor_id,
                     dt.as_local(data.last_seen),
                 )
@@ -148,3 +170,7 @@ class PurpleAirAqiSensor(PASensorBase, SensorEntity):
 
         data = self._get_sensor_data()
         return data.pm2_5_aqi_epa if data else None
+
+
+class PurpleAirSimpleSensor(PASensorBase, SensorEntity):
+    """Provide a sensor representing simple data from the PurpleAir sensor."""
