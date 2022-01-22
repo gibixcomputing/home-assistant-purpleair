@@ -3,11 +3,21 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, Protocol
+import logging
+from typing import TYPE_CHECKING, Any, Dict, Protocol
 
+from homeassistant.helpers import device_registry
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
+from .const import DOMAIN
 from .purple_air_api.v1.model import NormalizedApiData
+
+if TYPE_CHECKING:
+    from homeassistant.config_entries import ConfigEntry
+
+    from .purple_air_api.v1.model import DeviceReading
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class ApiProtocol(Protocol):
@@ -61,6 +71,9 @@ class PurpleAirDataUpdateCoordinator(
 
         self.api.register_sensor(pa_sensor_id, name, hidden, read_key)
 
+        # clear the last device update so we fetch device data next refresh!
+        self._last_device_refresh = None
+
     def unregister_sensor(self, pa_sensor_id: str) -> None:
         """Unregister the sensor from the coordinator and underlying API."""
 
@@ -76,6 +89,13 @@ class PurpleAirDataUpdateCoordinator(
         if data and [s["device"] for s in data.values() if s["device"]]:
             self._last_device_refresh = datetime.utcnow()
 
+            devices: dict[str, DeviceReading] = {}
+            for (pa_sensor_id, api_data) in data.items():
+                if device_data := api_data["device"]:
+                    devices[pa_sensor_id] = device_data
+
+            self.hass.async_add_job(self._async_update_devices, devices)
+
         return data
 
     @property
@@ -87,3 +107,55 @@ class PurpleAirDataUpdateCoordinator(
 
         diff = datetime.utcnow() - self._last_device_refresh
         return diff.days >= 1
+
+    async def _async_update_devices(self, devices: dict[str, DeviceReading]) -> None:
+        _LOGGER.info("device update! %s", devices)
+
+        config_entries = self.hass.config_entries.async_entries(DOMAIN)
+
+        def find_entry(pa_sensor_id: str) -> ConfigEntry | None:
+            if not pa_sensor_id:
+                return None
+
+            for config_entry in config_entries:
+                if (
+                    config_entry.data.get("api_version") == 1
+                    and config_entry.data.get("pa_sensor_id") == pa_sensor_id
+                ):
+                    return config_entry
+
+            return None
+
+        registry = device_registry.async_get(self.hass)
+
+        for (pa_sensor_id, device_data) in devices.items():
+            config_entry = find_entry(pa_sensor_id)
+            if not config_entry:
+                _LOGGER.debug(
+                    "could not find matching device for pa_sensor_id: %s", pa_sensor_id
+                )
+                continue
+
+            _LOGGER.debug(
+                "updating device data for pa_sensor_id: %s, config entry: %s",
+                pa_sensor_id,
+                config_entry.entry_id,
+            )
+
+            device = registry.async_get_or_create(
+                config_entry_id=config_entry.entry_id,
+                identifiers={(DOMAIN, pa_sensor_id)},
+                default_name=config_entry.title,
+                default_manufacturer="PurpleAir",
+                default_model="unknown",
+            )
+
+            if device:
+                registry.async_update_device(
+                    device.id,
+                    manufacturer="PurpleAir",
+                    model=f"{device_data.model} {device_data.hardware}",
+                    sw_version=device_data.firmware_version,
+                )
+
+                _LOGGER.debug("updated device for pa_sensor_id: %s", pa_sensor_id)
