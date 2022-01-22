@@ -5,6 +5,7 @@ import logging
 from typing import Any, Final
 
 from homeassistant.config_entries import CONN_CLASS_CLOUD_POLL, ConfigFlow
+from homeassistant.const import CONF_API_KEY, CONF_ID
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -21,8 +22,6 @@ from .purple_air_api.v1.util import get_api_sensor_config
 
 _LOGGER = logging.getLogger(__name__)
 
-CONF_API_READ_KEY: Final = "api_read_key"
-CONF_PA_SENSOR_ID: Final = "api_sensor_id"
 CONF_PA_SENSOR_READ_KEY: Final = "sensor_read_key"
 
 
@@ -42,8 +41,8 @@ async def get_sensor_config(
 
     session = async_get_clientsession(hass)
 
-    api_key = config_validation.string(user_input.get(CONF_API_READ_KEY))
-    pa_sensor_id = config_validation.string(user_input.get(CONF_PA_SENSOR_ID))
+    api_key = config_validation.string(user_input.get(CONF_API_KEY))
+    pa_sensor_id = config_validation.string(user_input.get(CONF_ID))
     pa_sensor_read_key = user_input.get(CONF_PA_SENSOR_READ_KEY)
 
     pa_sensor = await get_api_sensor_config(
@@ -110,7 +109,7 @@ class PurpleAirConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore
 
         # see if we can get another PA API key from an existing config to simplify setup.
         api_key = ""
-        if not user_input or not user_input.get(CONF_API_READ_KEY):
+        if not user_input or not user_input.get(CONF_API_KEY):
             entries = self.hass.config_entries.async_entries(DOMAIN)
             keys = {
                 e.data.get("api_key")
@@ -124,8 +123,8 @@ class PurpleAirConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore
 
         data_schema = vol.Schema(
             {
-                vol.Required(CONF_API_READ_KEY, default=api_key): str,
-                vol.Required(CONF_PA_SENSOR_ID): str,
+                vol.Required(CONF_API_KEY, default=api_key): str,
+                vol.Required(CONF_ID): str,
                 vol.Optional(CONF_PA_SENSOR_READ_KEY): str,
             }
         )

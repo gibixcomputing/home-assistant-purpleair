@@ -19,6 +19,7 @@ API_INT_VALUES: Final = [
 ]
 
 API_FLOAT_VALUES: Final = [
+    "analog_input",
     "latitude",
     "longitude",
     "pm1.0_atm",

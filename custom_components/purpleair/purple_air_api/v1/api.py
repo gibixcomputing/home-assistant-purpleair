@@ -90,7 +90,9 @@ class PurpleAirApiV1:
         del self.sensors[pa_sensor_id]
         _LOGGER.debug("unregistered sensor: %s", pa_sensor_id)
 
-    async def async_update(self) -> dict[str, NormalizedApiData] | None:
+    async def async_update(
+        self, do_device_update: bool
+    ) -> dict[str, NormalizedApiData] | None:
         """Handle updating data from the v1 PurpleAir API."""
 
         sensor_ids = {s.pa_sensor_id for s in self.sensors.values()}
@@ -101,6 +103,7 @@ class PurpleAirApiV1:
         fields = {
             "sensor_index": -1,
             "rssi": -1,
+            "analog_input": -1,
             "last_seen": -1,
             "channel_state": -1,
             "channel_flags": -1,
@@ -115,7 +118,7 @@ class PurpleAirApiV1:
             "uptime": -1,
         }
 
-        if self.do_device_update:
+        if do_device_update:
             fields["model"] = -1
             fields["hardware"] = -1
             fields["location_type"] = -1
@@ -161,22 +164,12 @@ class PurpleAirApiV1:
 
         data = cast(ApiSensorResponse, raw_data)
         _update_fields_position(fields, data["fields"])
-        sensor_data = _read_sensor_data(fields, data, self.do_device_update)
+        sensor_data = _read_sensor_data(fields, data, do_device_update)
         apply_sensor_corrections(sensor_data)
         add_aqi_calculations(sensor_data, cache=self._cache)
 
         _LOGGER.debug("sensor data: %s", sensor_data)
         return sensor_data
-
-    @property
-    def do_device_update(self) -> bool:
-        """Indicate if this update should include device data."""
-
-        if not self._last_device_refresh:
-            return True
-
-        diff = datetime.utcnow() - self._last_device_refresh
-        return diff.days >= 1
 
 
 def _update_fields_position(fields: dict[str, int], api_fields: list[str]) -> None:

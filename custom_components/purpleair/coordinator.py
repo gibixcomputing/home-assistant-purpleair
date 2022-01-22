@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, Dict, Protocol
 
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+
+from .purple_air_api.v1.model import NormalizedApiData
 
 
 class ApiProtocol(Protocol):
@@ -24,12 +27,16 @@ class ApiProtocol(Protocol):
         """Unregister a sensor from the API."""
         ...
 
-    async def async_update(self):
+    async def async_update(
+        self, do_device_update: bool
+    ) -> dict[str, NormalizedApiData] | None:
         """Update method for the Data Update Coordinator to call."""
         ...
 
 
-class PurpleAirDataUpdateCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
+class PurpleAirDataUpdateCoordinator(
+    DataUpdateCoordinator[Dict[str, NormalizedApiData]]
+):
     """Manage coordination between the API and DataUpdateCoordinator."""
 
     api: ApiProtocol
@@ -45,6 +52,7 @@ class PurpleAirDataUpdateCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
 
         self.api = api
         self.data: dict[str, Any] = {}
+        self._last_device_refresh = None
 
     def register_sensor(
         self, pa_sensor_id: str, name: str, hidden: bool, read_key: str | None = None
@@ -64,4 +72,18 @@ class PurpleAirDataUpdateCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
         return self.api.get_sensor_count()
 
     async def _async_update_data(self):
-        return await self.api.async_update()
+        data = await self.api.async_update(self.do_device_update)
+        if data and [s["device"] for s in data.values() if s["device"]]:
+            self._last_device_refresh = datetime.utcnow()
+
+        return data
+
+    @property
+    def do_device_update(self) -> bool:
+        """Indicate if this update should include device data."""
+
+        if not self._last_device_refresh:
+            return True
+
+        diff = datetime.utcnow() - self._last_device_refresh
+        return diff.days >= 1

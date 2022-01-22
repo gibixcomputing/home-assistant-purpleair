@@ -129,6 +129,7 @@ class SensorReading:
     humidity: int | None = None
     temperature: float | None = None
 
+    analog_input: float | None = None
     pm1_0_atm: float | None = None
     pm2_5_atm: float | None = None
     pm2_5_cf_1: float | None = None
