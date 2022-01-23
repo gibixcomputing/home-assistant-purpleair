@@ -157,9 +157,9 @@ class PurpleAirConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore
         """Handle legacy migration steps for the sensor."""
 
         # if we have an existing API key, attempt auto migration
-        # if api_key := self._get_api_key():
-        #    self._api_key = api_key
-        #    return await self.async_step_legacy_migrate_with_api_key()
+        if api_key := self._get_api_key():
+            self._api_key = api_key
+            return await self.async_step_legacy_migrate_with_api_key()
 
         return await self.async_step_legacy_migrate_without_api_key()
 

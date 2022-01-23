@@ -6,7 +6,6 @@ from datetime import datetime
 import logging
 from typing import TYPE_CHECKING, Callable, Dict, Protocol
 
-from aiohttp import ClientSession
 from homeassistant.helpers import device_registry
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
@@ -15,6 +14,7 @@ from .const import DOMAIN
 from .purple_air_api.v1.model import NormalizedApiData
 
 if TYPE_CHECKING:
+    from aiohttp import ClientSession
     from homeassistant.config_entries import ConfigEntry
 
     from .purple_air_api.v1.model import DeviceReading
