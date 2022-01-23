@@ -75,11 +75,9 @@ async def async_setup(hass: HomeAssistant, config: dict):
     expected_entries_v0 = len({e for e in entries if e.data.get("api_version") == 0})
     has_legacy_api = expected_entries_v0 > 0
     expected_entries_v1 = len({e for e in entries if e.data.get("api_version") == 1})
-    has_new_api = expected_entries_v1 > 0
 
     # Support v0 and v1 APIs during transition period
     api_v0 = None
-    api_v1 = None
     coordinator_v0 = None
     coordinator_v1 = None
 
@@ -97,35 +95,18 @@ async def async_setup(hass: HomeAssistant, config: dict):
         # prime the coordinator with initial data
         coordinator_v0.data = {}
 
-    if has_new_api:
-        _LOGGER.info("Adding support for v1 PurpleAir sensors.")
+    _LOGGER.info("Adding support for v1 PurpleAir sensors.")
 
-        api_keys: set[str] = {
-            e.data.get("api_key", "")
-            for e in entries
-            if e.data.get("api_key") and e.data.get("api_version") == 1
-        }
-        api_key = api_keys.pop() if len(api_keys) == 1 else ""
-
-        if not api_key:
-            _LOGGER.error(
-                "Zero keys or more than one v1 API key found (%s). This component requires exactly one API key to be configured.",
-                len(api_keys),
-            )
-            return False
-
-        api_v1 = PurpleAirApiV1(session, api_key)
-        coordinator_v1 = PurpleAirDataUpdateCoordinator(
-            api_v1,
-            hass,
-            _LOGGER,
-            name="purpleair_v1",
-            update_interval=timedelta(seconds=SCAN_INTERVAL),
-        )
+    coordinator_v1 = PurpleAirDataUpdateCoordinator(
+        PurpleAirApiV1,
+        hass,
+        _LOGGER,
+        name="purpleair_v1",
+        update_interval=timedelta(seconds=SCAN_INTERVAL),
+    )
 
     hass.data[DOMAIN] = PurpleAirDomainData(
         api=api_v0,
-        api_v1=api_v1,
         coordinator=coordinator_v0,
         coordinator_v1=coordinator_v1,
         expected_entries=expected_entries_v0,
@@ -155,6 +136,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 
     # register legacy senors with legacy API
     if config.api_version == 0:
+        config_entry.async_start_reauth(hass)
         return await _async_register_legacy_sensor(config, domain_data)
 
     if config.api_version == 1:
@@ -248,6 +230,7 @@ async def _async_register_v1_sensor(
         return False
 
     coordinator_v1.register_sensor(
+        config.api_key,
         config.pa_sensor_id,
         config.title,
         config.hidden,

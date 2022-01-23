@@ -12,7 +12,6 @@ if TYPE_CHECKING:
     from .coordinator import PurpleAirDataUpdateCoordinator
     from .purple_air_api import PurpleAirApi
     from .purple_air_api.model import PurpleAirApiSensorData
-    from .purple_air_api.v1.api import PurpleAirApiV1
 
 
 @dataclass
@@ -58,8 +57,6 @@ class PurpleAirDomainData:
     Attributes:
     - api (PurpleAirApi):
           The shared API instance used to query the PurpleAir API.
-    - api (PurpleAirApiV1):
-          The shared v1 API instance used to query the v1 PurpleAir API.
     - coordinator (DataUpdateCoordinator[dict[str, PurpleAirApiSensorData]]):
           The shared data update coordinator for use with HA sensors.
     - coordinator_v1 ():
@@ -72,7 +69,6 @@ class PurpleAirDomainData:
     """
 
     api: PurpleAirApi | None = None
-    api_v1: PurpleAirApiV1 | None = None
     coordinator: DataUpdateCoordinator[dict[str, PurpleAirApiSensorData]] | None = None
     coordinator_v1: PurpleAirDataUpdateCoordinator | None = None
     expected_entries: int = 0

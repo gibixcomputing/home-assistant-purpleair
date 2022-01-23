@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from datetime import datetime
 import logging
-from typing import TYPE_CHECKING, Any, Dict, Protocol
+from typing import TYPE_CHECKING, Callable, Dict, Protocol
 
+from aiohttp import ClientSession
 from homeassistant.helpers import device_registry
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import DOMAIN
@@ -49,9 +51,12 @@ class PurpleAirDataUpdateCoordinator(
 ):
     """Manage coordination between the API and DataUpdateCoordinator."""
 
-    api: ApiProtocol
+    api: ApiProtocol | None
+    _last_device_refresh: datetime | None
 
-    def __init__(self, api: ApiProtocol, *args, **kwargs):
+    def __init__(
+        self, api: Callable[[ClientSession, str], ApiProtocol], *args, **kwargs
+    ):
         """Create a new PurpleAirDataUpdateCoordinator.
 
         The "update_method" keyword argument will be ignored as this will call the
@@ -60,14 +65,24 @@ class PurpleAirDataUpdateCoordinator(
 
         super().__init__(*args, **kwargs)
 
-        self.api = api
-        self.data: dict[str, Any] = {}
+        self.data: dict[str, NormalizedApiData] = {}
+        self.api = None
+        self._api_cls = api
         self._last_device_refresh = None
 
     def register_sensor(
-        self, pa_sensor_id: str, name: str, hidden: bool, read_key: str | None = None
+        self,
+        api_key: str,
+        pa_sensor_id: str,
+        name: str,
+        hidden: bool,
+        read_key: str | None = None,
     ) -> None:
         """Register the sensor with the coordinator and underlying API."""
+
+        if not self.api:
+            session = async_get_clientsession(self.hass)
+            self.api = self._api_cls(session, api_key)
 
         self.api.register_sensor(pa_sensor_id, name, hidden, read_key)
 
@@ -77,14 +92,21 @@ class PurpleAirDataUpdateCoordinator(
     def unregister_sensor(self, pa_sensor_id: str) -> None:
         """Unregister the sensor from the coordinator and underlying API."""
 
-        self.api.unregister_sensor(pa_sensor_id)
+        if self.api:
+            self.api.unregister_sensor(pa_sensor_id)
+
+        if self.get_sensor_count() == 0:
+            self.api = None
 
     def get_sensor_count(self) -> int:
         """Get the registered sensor count from the underlying API."""
 
-        return self.api.get_sensor_count()
+        return self.api.get_sensor_count() if self.api else 0
 
-    async def _async_update_data(self):
+    async def _async_update_data(self) -> dict[str, NormalizedApiData]:
+        if not self.api:
+            return {}
+
         data = await self.api.async_update(self.do_device_update)
         if data and [s["device"] for s in data.values() if s["device"]]:
             self._last_device_refresh = datetime.utcnow()
@@ -96,7 +118,7 @@ class PurpleAirDataUpdateCoordinator(
 
             self.hass.async_add_job(self._async_update_devices, devices)
 
-        return data
+        return data if data else {}
 
     @property
     def do_device_update(self) -> bool:
