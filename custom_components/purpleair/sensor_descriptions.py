@@ -49,6 +49,7 @@ SIMPLE_SENSOR_DESCRIPTIONS: Final = [
         device_class=DEVICE_CLASS_AQI,
         state_class=STATE_CLASS_MEASUREMENT,
         native_unit_of_measurement="AQI",
+        entity_registry_enabled_default=False,
         attr_name="pm2_5_aqi_instant",
     ),
     PASensorDescription(  # type: ignore
@@ -58,6 +59,7 @@ SIMPLE_SENSOR_DESCRIPTIONS: Final = [
         device_class=DEVICE_CLASS_PM25,
         state_class=STATE_CLASS_MEASUREMENT,
         native_unit_of_measurement=CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
+        entity_registry_enabled_default=False,
         attr_name="pm2_5_atm",
     ),
     PASensorDescription(  # type: ignore
@@ -67,6 +69,7 @@ SIMPLE_SENSOR_DESCRIPTIONS: Final = [
         device_class=DEVICE_CLASS_PM1,
         state_class=STATE_CLASS_MEASUREMENT,
         native_unit_of_measurement=CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
+        entity_registry_enabled_default=False,
         attr_name="pm1_0_atm",
     ),
     PASensorDescription(  # type: ignore
@@ -76,6 +79,7 @@ SIMPLE_SENSOR_DESCRIPTIONS: Final = [
         device_class=DEVICE_CLASS_PM10,
         state_class=STATE_CLASS_MEASUREMENT,
         native_unit_of_measurement=CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
+        entity_registry_enabled_default=False,
         attr_name="pm10_0_atm",
     ),
     PASensorDescription(  # type: ignore
@@ -85,6 +89,7 @@ SIMPLE_SENSOR_DESCRIPTIONS: Final = [
         device_class=DEVICE_CLASS_HUMIDITY,
         state_class=STATE_CLASS_MEASUREMENT,
         native_unit_of_measurement=PERCENTAGE,
+        entity_registry_enabled_default=False,
         attr_name="humidity",
     ),
     PASensorDescription(  # type: ignore
@@ -94,6 +99,7 @@ SIMPLE_SENSOR_DESCRIPTIONS: Final = [
         device_class=DEVICE_CLASS_TEMPERATURE,
         state_class=STATE_CLASS_MEASUREMENT,
         native_unit_of_measurement=TEMP_FAHRENHEIT,
+        entity_registry_enabled_default=False,
         attr_name="temperature",
     ),
     PASensorDescription(  # type: ignore
@@ -103,6 +109,7 @@ SIMPLE_SENSOR_DESCRIPTIONS: Final = [
         device_class=DEVICE_CLASS_PRESSURE,
         state_class=STATE_CLASS_MEASUREMENT,
         native_unit_of_measurement=PRESSURE_HPA,
+        entity_registry_enabled_default=False,
         attr_name="pressure",
     ),
 ]
