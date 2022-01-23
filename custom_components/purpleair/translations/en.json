@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Connect a PurpleAir Station",
-        "description": "To connect to a PurpleAir station, you will first need a free API key. \\\nEmail [contact@purpleair.com](mailto:contact@purpleair.com) to receive an API key.\n\nIn order to add the station, please locate the station on the [PurpleAir map](https://map.purpleair.com), select it, click on \"Get this Widget\" and finally, click on \"Download Data\". In the resulting page, grab the URL (which should look like \"/sensorlist?key=ABC&show=123\", copy the \"show\" value to the station ID field and copy the \"key\" string to the station read key.\n\nA device will be created with basic data and will be populated on the next data pull.",
+        "description": "To connect to a PurpleAir station, you will first need a free API key. \\\nEmail [contact@purpleair.com](mailto:contact@purpleair.com) to receive an API key.\n\nIn order to add the station, please locate the station on the [PurpleAir map](https://map.purpleair.com), select it, click on \"Get this Widget\" and finally, click on \"Download Data\". In the resulting page, grab the URL (which should look like \"/sensorlist?key=ABC&show=123\"), copy the \"show\" value to the station ID field and copy the \"key\" string to the station read key.\n\nA device will be created with basic data and will be populated on the next data pull.",
         "data": {
           "api_key": "Your API read key you received from PurpleAir",
           "id": "PurpleAir station ID you want to monitor",
@@ -13,7 +13,7 @@
       },
       "add_sensor": {
         "title": "Connect a PurpleAir Station",
-        "description": "To add another station, please locate the station on the [PurpleAir map](https://map.purpleair.com), select it, click on \"Get this Widget\" and finally, click on \"Download Data\". In the resulting page, grab the URL (which should look like \"/sensorlist?key=ABC&show=123\", copy the \"show\" value to the station ID field and copy the \"key\" string to the station read key.",
+        "description": "To add another station, please locate the station on the [PurpleAir map](https://map.purpleair.com), select it, click on \"Get this Widget\" and finally, click on \"Download Data\". In the resulting page, grab the URL (which should look like \"/sensorlist?key=ABC&show=123\"), copy the \"show\" value to the station ID field and copy the \"key\" string to the station read key.",
         "data": {
           "id": "PurpleAir station ID you want to monitor (show value)",
           "sensor_read_key": "The station read key if the sensor is hidden (Optional)"
@@ -44,10 +44,16 @@
       }
     },
     "error": {
+      "api_key_bad_status": "The API key returned with a bad status, please try again in a moment.",
+      "api_key_forbidden": "The API key was invalid or restricted. Double check the key is correct. The logs may contain more details",
+      "api_key_missing": "An API key needs to be provided to access the PurpleAir API.",
+      "api_key_not_read_key": "The API key given was not a \"READ\" key, please provide your API \"READ\" key.",
+      "id_missing": "The sensor ID was not provided.",
+      "id_not_found": "The sensor was not found. If the sensor is hidden, you must provide the sensor read key below.",
+      "id_bad_read_key": "The sensor was found, but the read key did not match. If this is a public sensor, remove the sensor read key below. Otherwise, double check the correct key was entered.",
       "bad_data": "PurpleAir API returned unrecognized data. See the logs for more information.",
       "bad_status": "PurpleAir API returned a bad status code. See the logs for more information.",
-      "unknown": "An unknown error occurred during setup. See the logs for more information.",
-      "url": "Invalid URL provided. Please make sure you copied the link from\n    \"Get This Widget\" > \"Download\""
+      "unknown": "An unknown error occurred during setup. See the logs for more information."
     },
     "abort": {
       "already_configured": "This PurpleAir station ID is already registered.",

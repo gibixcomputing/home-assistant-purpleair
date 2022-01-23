@@ -135,7 +135,7 @@ class PurpleAirAqiSensor(PASensorBase, SensorEntity):
             if not self._warn_stale:
                 _LOGGER.warning(
                     'PurpleAir Sensor "%s" (%s) has not sent data over 90 mins. Last update was %s',
-                    self.entity_description.name,
+                    self.pa_sensor_name,
                     self.pa_sensor_id,
                     dt.as_local(data.last_seen),
                 )

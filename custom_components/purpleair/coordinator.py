@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from aiohttp import ClientSession
     from homeassistant.config_entries import ConfigEntry
 
+    from .model import PurpleAirDomainData
     from .purple_air_api.v1.model import DeviceReading
 
 _LOGGER = logging.getLogger(__name__)
@@ -89,6 +90,17 @@ class PurpleAirDataUpdateCoordinator(
         # clear the last device update so we fetch device data next refresh!
         self._last_device_refresh = None
 
+        # request an update if we've had enough sensors register or we're adding
+        # a new one
+        if self.get_sensor_count() >= self._domain_data.expected_entries_v1:
+            self._domain_data.expected_entries_v1 = 0
+            self.hass.async_add_job(
+                self._async_refresh,
+                True,  # log_failures
+                False,  # raise_on_auth_failed
+                False,  # scheduled
+            )
+
     def unregister_sensor(self, pa_sensor_id: str) -> None:
         """Unregister the sensor from the coordinator and underlying API."""
 
@@ -129,6 +141,10 @@ class PurpleAirDataUpdateCoordinator(
 
         diff = datetime.utcnow() - self._last_device_refresh
         return diff.days >= 1
+
+    @property
+    def _domain_data(self) -> PurpleAirDomainData:
+        return self.hass.data[DOMAIN]
 
     async def _async_update_devices(self, devices: dict[str, DeviceReading]) -> None:
         _LOGGER.info("device update! %s", devices)

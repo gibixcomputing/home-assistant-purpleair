@@ -1,26 +1,24 @@
 """Config flow for Purple Air integration."""
+
 from __future__ import annotations
 
+from collections import defaultdict
 import logging
 from typing import TYPE_CHECKING, Any, Final, TypedDict, cast
 
-from homeassistant.config_entries import CONN_CLASS_CLOUD_POLL, ConfigFlow
+from homeassistant.config_entries import CONN_CLASS_CLOUD_POLL, HANDLERS, ConfigFlow
 from homeassistant.const import CONF_API_KEY, CONF_ID
-from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import voluptuous as vol
 
 from .const import DOMAIN
 from .model import PurpleAirConfigEntry
-from .purple_air_api.exceptions import (
-    PurpleAirApiInvalidResponseError,
-    PurpleAirApiStatusError,
-    PurpleAirApiUrlError,
-)
+from .purple_air_api.v1.exceptions import PurpleAirApiConfigError
 from .purple_air_api.v1.util import get_api_sensor_config
 
 if TYPE_CHECKING:
+    from aiohttp import ClientSession
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.data_entry_flow import FlowResult
 
@@ -37,36 +35,8 @@ class UserInputSensorConfig(TypedDict):
     sensor_read_key: str | None
 
 
-async def get_sensor_config(
-    hass: HomeAssistant, user_input: UserInputSensorConfig
-) -> PurpleAirConfigEntry:
-    """Create a new PurpleAirConfigEntry from the user input."""
-
-    session = async_get_clientsession(hass)
-
-    api_key = config_validation.string(user_input.get(CONF_API_KEY))
-    pa_sensor_id = config_validation.string(user_input.get(CONF_ID))
-    pa_sensor_read_key = user_input.get(CONF_PA_SENSOR_READ_KEY)
-
-    pa_sensor = await get_api_sensor_config(
-        session, api_key, pa_sensor_id, pa_sensor_read_key
-    )
-
-    config = PurpleAirConfigEntry(
-        pa_sensor_id=pa_sensor.pa_sensor_id,
-        title=pa_sensor.name,
-        key=pa_sensor.read_key,
-        hidden=pa_sensor.hidden,
-        api_key=api_key,
-        api_version=1,
-    )
-
-    _LOGGER.debug("got configuration: %s", config)
-
-    return config
-
-
-class PurpleAirConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore
+@HANDLERS.register(DOMAIN)
+class PurpleAirConfigFlow(ConfigFlow):
     """Configuration flow for setting up a new PurpleAir Sensor."""
 
     VERSION = 4
@@ -75,6 +45,7 @@ class PurpleAirConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore
     _api_key: str
     _new_config: PurpleAirConfigEntry
     _old_config: PurpleAirConfigEntry
+    _session: ClientSession
 
     async def async_step_user(
         self, user_input: UserInputSensorConfig = None
@@ -97,11 +68,14 @@ class PurpleAirConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore
 
                 return self.async_create_entry(title=config.title, data=config.asdict())
 
+        data = vol_data_dict(user_input)
         data_schema = vol.Schema(
             {
-                vol.Required(CONF_API_KEY): str,
-                vol.Required(CONF_ID): str,
-                vol.Optional(CONF_PA_SENSOR_READ_KEY): str,
+                vol.Required(CONF_API_KEY, default=data[CONF_API_KEY]): str,
+                vol.Required(CONF_ID, default=data[CONF_ID]): str,
+                vol.Optional(
+                    CONF_PA_SENSOR_READ_KEY, default=data[CONF_PA_SENSOR_READ_KEY]
+                ): str,
             }
         )
 
@@ -126,10 +100,13 @@ class PurpleAirConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore
 
                 return self.async_create_entry(title=config.title, data=config.asdict())
 
+        data = vol_data_dict(user_input)
         data_schema = vol.Schema(
             {
-                vol.Required(CONF_ID): str,
-                vol.Optional(CONF_PA_SENSOR_READ_KEY): str,
+                vol.Required(CONF_ID, default=data[CONF_ID]): str,
+                vol.Optional(
+                    CONF_PA_SENSOR_READ_KEY, default=data[CONF_PA_SENSOR_READ_KEY]
+                ): str,
             }
         )
 
@@ -156,6 +133,9 @@ class PurpleAirConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore
     async def async_step_legacy_migrate(self, user_input: None = None) -> FlowResult:
         """Handle legacy migration steps for the sensor."""
 
+        # we don't use user_input in this method, but it's part of the signature
+        del user_input
+
         # if we have an existing API key, attempt auto migration
         if api_key := self._get_api_key():
             self._api_key = api_key
@@ -176,7 +156,7 @@ class PurpleAirConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore
 
     async def async_step_legacy_migrate_with_api_key(
         self, user_input: UserInputSensorConfig | None = None
-    ):
+    ) -> FlowResult:
         """Attempt to automatically migrate the sensor, if we can.
 
         Otherwise show the user some configuration steps and hints.
@@ -207,11 +187,14 @@ class PurpleAirConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore
             if new_config and not errors:
                 return await self._migrate_legacy_config(new_config)
 
+        data = vol_data_dict(config.as_schema_entry_data(), user_input)
         data_schema = vol.Schema(
             {
-                vol.Required(CONF_API_KEY, default=config.api_key): str,
-                vol.Required(CONF_ID, default=config.pa_sensor_id): str,
-                vol.Optional(CONF_PA_SENSOR_READ_KEY, default=config.key): str,
+                vol.Required(CONF_API_KEY, default=data[CONF_API_KEY]): str,
+                vol.Required(CONF_ID, default=data[CONF_ID]): str,
+                vol.Optional(
+                    CONF_PA_SENSOR_READ_KEY, default=data[CONF_PA_SENSOR_READ_KEY]
+                ): str,
             }
         )
 
@@ -229,11 +212,20 @@ class PurpleAirConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore
         config = self._old_config
         errors: dict[str, str] = {}
 
+        if user_input is not None:
+            (new_config, errors) = await self._get_sensor_config(user_input)
+
+            if new_config and not errors:
+                return await self._migrate_legacy_config(new_config)
+
+        data = vol_data_dict(config.as_schema_entry_data(), user_input)
         data_schema = vol.Schema(
             {
-                vol.Required(CONF_API_KEY): str,
-                vol.Required(CONF_ID, default=config.pa_sensor_id): str,
-                vol.Optional(CONF_PA_SENSOR_READ_KEY, default=config.key): str,
+                vol.Required(CONF_API_KEY, default=data[CONF_API_KEY]): str,
+                vol.Required(CONF_ID, default=data[CONF_ID]): str,
+                vol.Optional(
+                    CONF_PA_SENSOR_READ_KEY, default=data[CONF_PA_SENSOR_READ_KEY]
+                ): str,
             }
         )
 
@@ -260,48 +252,51 @@ class PurpleAirConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore
 
         return api_key or ""
 
-    async def _migrate_legacy_config(
-        self, new_config: PurpleAirConfigEntry
-    ) -> FlowResult:
-        """Update the existing config entry with the new config entry."""
-
-        existing_entry: ConfigEntry = await self.async_set_unique_id(new_config.get_uniqueid())  # type: ignore
-        new_entry = new_config.asdict()
-
-        self.hass.config_entries.async_update_entry(existing_entry, data=new_entry)
-
-        self.hass.async_create_task(
-            self.hass.config_entries.async_reload(existing_entry.entry_id)
-        )
-
-        return self.async_abort(reason="legacy_migrate_success")
-
     async def _get_sensor_config(
         self, user_input: UserInputSensorConfig
     ) -> tuple[PurpleAirConfigEntry | None, dict[str, str]]:
+        """Create a new PurpleAirConfigEntry from the user input."""
+
+        # PurpleAirApiConfigError
+
         errors: dict[str, str] = {}
+        vol_step = ""
         try:
-            config = await get_sensor_config(self.hass, user_input)
+            if not hasattr(self, "_session"):
+                self._session = async_get_clientsession(self.hass)
+
+            vol_step = "api_key"
+            api_key = config_validation.string(user_input.get(CONF_API_KEY))
+            vol_step = "id"
+            pa_sensor_id = config_validation.string(user_input.get(CONF_ID))
+            pa_sensor_read_key = user_input.get(CONF_PA_SENSOR_READ_KEY)
+
+            pa_sensor = await get_api_sensor_config(
+                self._session, api_key, pa_sensor_id, pa_sensor_read_key
+            )
+
+            config = PurpleAirConfigEntry(
+                pa_sensor_id=pa_sensor.pa_sensor_id,
+                title=pa_sensor.name,
+                key=pa_sensor.read_key,
+                hidden=pa_sensor.hidden,
+                api_key=api_key,
+                api_version=1,
+            )
+
+            _LOGGER.debug("got configuration: %s", config)
             return (config, errors)
-        except (vol.Invalid, PurpleAirApiUrlError) as error:
-            _LOGGER.exception("err", exc_info=error)
-            errors["url"] = "url"
-        except PurpleAirApiStatusError as error:
-            _LOGGER.exception(
-                "PurpleAir API returned bad status code %s\nData:\n%s",
-                error.status,
-                error.text,
-                exc_info=error,
-            )
-            errors["base"] = "bad_status"
-        except PurpleAirApiInvalidResponseError as error:
-            _LOGGER.exception(
-                "PurpleAir API returned invalid data.\nMessage: %s\nData: %s",
-                error.message,
-                error.data,
-                exc_info=error,
-            )
-            errors["base"] = "bad_data"
+        except vol.Invalid:
+            errors[vol_step] = f"{vol_step}_missing"
+        except PurpleAirApiConfigError as error:
+            if error.param == "api_key":
+                errors["api_key"] = f"api_key_{error.extra}"
+            elif error.param == "pa_sensor_id":
+                errors["id"] = f"id_{error.extra}"
+            elif error.param == "bad_request":
+                errors["base"] = "bad_request"
+            elif error.param == "server_error":
+                errors["base"] = "bad_status"
         except Exception as error:  # pylint: disable=broad-except
             _LOGGER.exception(
                 "An unknown error occurred while setting up the PurpleAir Sensor",
@@ -310,3 +305,54 @@ class PurpleAirConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore
             errors["base"] = "unknown"
 
         return (None, errors)
+
+    async def _migrate_legacy_config(
+        self, new_config: PurpleAirConfigEntry
+    ) -> FlowResult:
+        """Update the existing config entry with the new config entry."""
+
+        existing_entry: ConfigEntry = await self.async_set_unique_id(new_config.get_uniqueid())  # type: ignore
+        # try the legacy (bad) format for entries, which was just a sensor id number.
+        if not existing_entry:
+            existing_entry = await self.async_set_unique_id(new_config.pa_sensor_id)  # type: ignore
+
+        new_entry = new_config.asdict()
+
+        _LOGGER.debug("migrating entry: %s to %s", existing_entry, new_entry)
+
+        self.hass.config_entries.async_update_entry(
+            existing_entry, unique_id=new_config.get_uniqueid(), data=new_entry
+        )
+
+        self.hass.async_create_task(
+            self.hass.config_entries.async_reload(existing_entry.entry_id)
+        )
+
+        return self.async_abort(reason="legacy_migrate_success")
+
+
+def vol_data_dict(*args) -> dict[str, Any]:
+    """Create a helpful data dictionary for voluptuous schemas.
+
+    The underlying dictionary will return vol.UNDEFINED for any unset key. The
+    *args parameter will update the dictionary with the provided dictionaries in a
+    left to right order.
+
+    Example:
+    >>> r = None
+    >>> s = {"api_key": "abc123", "name": "python"}
+    >>> t = {"api_key": "def456"}
+    >>> d = vol_data_dict(r, s, t)
+    >>> d["api_key"]
+    'def456'
+    >>> d["name"]
+    'python'
+    >>> d["other_value"]
+    ...
+    >>> type(d["other_value"])
+    <class 'voluptuous.schema_builder.Undefined'>
+    """
+    return defaultdict(
+        lambda: vol.UNDEFINED,
+        {k: v for i in args if i is not None for k, v in i.items() if v is not None},
+    )

@@ -164,7 +164,7 @@ def build_sensors(results: list[dict[str, Any]]) -> dict[str, PurpleAirApiSensor
         channel = "B" if "ParentID" in result else "A"
         channel_data = readings.get_channel(channel)
         for prop in JSON_PROPERTIES:
-            channel_data[prop] = float(result.get(prop, 0))
+            channel_data[prop] = result.get(prop)  # type: ignore
 
     return sensors
 

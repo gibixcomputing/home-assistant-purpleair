@@ -45,6 +45,14 @@ class PurpleAirConfigEntry:
         """Return the entry as a dict."""
         return asdict(self)
 
+    def as_schema_entry_data(self) -> dict:
+        """Return this entry as schema entry data."""
+        return {
+            "api_key": self.api_key,
+            "id": self.pa_sensor_id,
+            "sensor_read_key": self.key,
+        }
+
     def get_uniqueid(self) -> str:
         """Get the unique id."""
         return f"purpleair_{self.pa_sensor_id}"

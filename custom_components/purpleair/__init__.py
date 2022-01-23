@@ -67,33 +67,20 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     return True
 
 
-async def async_setup(hass: HomeAssistant, config: dict):
+async def async_setup(hass: HomeAssistant, config: None) -> bool:
     """Set up the PurpleAir component."""
-    session = async_get_clientsession(hass)
+
+    # config is unused but required for function signature.
+    del config
 
     entries = hass.config_entries.async_entries(DOMAIN)
     expected_entries_v0 = len({e for e in entries if e.data.get("api_version") == 0})
-    has_legacy_api = expected_entries_v0 > 0
     expected_entries_v1 = len({e for e in entries if e.data.get("api_version") == 1})
 
     # Support v0 and v1 APIs during transition period
     api_v0 = None
     coordinator_v0 = None
     coordinator_v1 = None
-
-    if has_legacy_api:
-        _LOGGER.warning("Legacy API PurpleAir sensors detected.")
-        api_v0 = PurpleAirApi(session)
-        coordinator_v0 = DataUpdateCoordinator(
-            hass,
-            _LOGGER,
-            name="purpleair",
-            update_method=api_v0.update,
-            update_interval=timedelta(seconds=SCAN_INTERVAL),
-        )
-
-        # prime the coordinator with initial data
-        coordinator_v0.data = {}
 
     _LOGGER.info("Adding support for v1 PurpleAir sensors.")
 
@@ -119,6 +106,25 @@ async def async_setup(hass: HomeAssistant, config: dict):
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     """Set up PurpleAir from a config entry."""
 
+    config = PurpleAirConfigEntry(**config_entry.data)
+    domain_data: PurpleAirDomainData = hass.data[DOMAIN]
+
+    if config.api_version == 0 and not domain_data.coordinator:
+        _LOGGER.warning("Legacy API PurpleAir sensors detected.")
+
+        session = async_get_clientsession(hass)
+        api_v0 = PurpleAirApi(session)
+        coordinator_v0 = DataUpdateCoordinator(
+            hass,
+            _LOGGER,
+            name="purpleair",
+            update_method=api_v0.update,
+            update_interval=timedelta(seconds=SCAN_INTERVAL),
+        )
+        coordinator_v0.data = {}
+        domain_data.api = api_v0
+        domain_data.coordinator = coordinator_v0
+
     for component in PLATFORMS:
         hass.async_create_task(
             hass.config_entries.async_forward_entry_setup(config_entry, component)
@@ -130,9 +136,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     if entity_id := ent_reg.async_get_entity_id("air_quality", DOMAIN, unique_id):
         _LOGGER.debug("Removing deprecated air_quality entity %s", entity_id)
         ent_reg.async_remove(entity_id)
-
-    config = PurpleAirConfigEntry(**config_entry.data)
-    domain_data: PurpleAirDomainData = hass.data[DOMAIN]
 
     # register legacy senors with legacy API
     if config.api_version == 0:
@@ -236,18 +239,5 @@ async def _async_register_v1_sensor(
         config.hidden,
         config.key,
     )
-
-    # check for the number of registered sensor during startup to only request
-    # an update once all expected sensors are registered.
-    if (
-        # expected_entries will be 0/None if this is the first one
-        not domain_data.expected_entries_v1
-        # safety for not spamming at startup
-        or coordinator_v1.get_sensor_count() == domain_data.expected_entries_v1
-    ) and not coordinator_v1.data.get(
-        config.pa_sensor_id
-    ):  # skips refresh if enabling extra sensors
-        await coordinator_v1.async_config_entry_first_refresh()
-        domain_data.expected_entries_v1 = 0
 
     return True

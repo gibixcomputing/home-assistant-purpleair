@@ -134,7 +134,14 @@ class PurpleAirApiV1:
         }
 
         if read_keys:
-            params["read_keys"] = ",".join(sensor_ids)
+            params["read_keys"] = ",".join(read_keys)
+
+        _LOGGER.debug(
+            "calling api %s with headers %s and params %s",
+            URL_API_V1_SENSORS,
+            self._headers,
+            params,
+        )
 
         async with self.session.get(
             URL_API_V1_SENSORS, headers=self._headers, params=params

@@ -172,10 +172,13 @@ async def get_api_sensor_config(
     | api_key      | missing      | The parameter is missing.                    |
     |              | bad_status   | PA server returned a bad status.             |
     |              | not_read_key | PA server indicated key is not a READ key.   |
+    |              | forbidden    | The key is invalid or restricted.            |
     |--------------|--------------|----------------------------------------------|
     | server_error | str          | .extra is the HTTP reason string.            |
     |--------------|--------------|----------------------------------------------|
     | pa_sensor_id | missing      | The parameter is missing.                    |
+    |              | not_found    | The PA sensor was not found. Does it need a  |
+    |              |              | read key because it's hidden?                |
     |              | bad_read_key | pa_sensor_read_key does not match sensor     |
     |              |              | read key.                                    |
     |--------------|--------------|----------------------------------------------|
@@ -196,16 +199,32 @@ async def get_api_sensor_config(
     }
 
     async with session.get(URL_API_V1_KEYS_URL, headers=headers) as resp:
-        if not resp.ok:
-            raise PurpleAirApiConfigError("api_key", "bad_status")
+        if resp.status >= HTTPStatus.INTERNAL_SERVER_ERROR:
+            _LOGGER.error(
+                "(get_api_sensor_config[key_fetch]) PurpleAir reported a server error: %s",
+                resp.reason,
+            )
+            raise PurpleAirApiConfigError("server_error", resp.reason)
 
         key_data = await resp.json()
+        _LOGGER.debug("(get_api_sensor_config[key_fetch]) key response: %s", key_data)
+
+        if not resp.ok:
+            if resp.status == HTTPStatus.FORBIDDEN:
+                _LOGGER.error(
+                    "PurpleAir API reported key '%s' as invalid or restricted: %s",
+                    api_key,
+                    key_data,
+                )
+                raise PurpleAirApiConfigError("api_key", "forbidden")
+
+            raise PurpleAirApiConfigError("api_key", "bad_status")
+
         if key_data.get("api_key_type") != "READ":
             raise PurpleAirApiConfigError("api_key", "not_read_key")
 
     config_fields = [
         "name",
-        "primary_id_a",
         "primary_key_a",
         "private",
         "sensor_index",
