@@ -10,13 +10,16 @@ from typing import cast
 from aiohttp import ClientSession
 
 from .const import (
+    API_DEVICE_FIELDS,
     API_FLOAT_VALUES,
     API_INT_VALUES,
+    API_SENSOR_FIELDS,
     API_SPECIAL_VALUES,
     API_STRING_VALUES,
     API_TIMESTAMP_VALUES,
     URL_API_V1_SENSORS,
 )
+from .exceptions import PurpleAirApiDataError, PurpleAirServerApiError
 from .model import (
     ApiConfigEntry,
     DeviceReading,
@@ -92,7 +95,7 @@ class PurpleAirApiV1:
 
     async def async_update(
         self, do_device_update: bool
-    ) -> dict[str, NormalizedApiData] | None:
+    ) -> dict[str, NormalizedApiData]:
         """Handle updating data from the v1 PurpleAir API."""
 
         sensor_ids = {s.pa_sensor_id for s in self.sensors.values()}
@@ -100,33 +103,11 @@ class PurpleAirApiV1:
             s.read_key for s in self.sensors.values() if s.hidden and s.read_key
         }
 
-        fields = {
-            "sensor_index": -1,
-            "rssi": -1,
-            "analog_input": -1,
-            "last_seen": -1,
-            "channel_state": -1,
-            "channel_flags": -1,
-            "confidence": -1,
-            "humidity": -1,
-            "temperature": -1,
-            "pressure": -1,
-            "pm1.0_atm": -1,
-            "pm2.5_atm": -1,
-            "pm2.5_cf_1": -1,
-            "pm10.0_atm": -1,
-            "uptime": -1,
-        }
+        fields = API_SENSOR_FIELDS.copy()
 
+        # add device fields when requested to do a device update
         if do_device_update:
-            fields["model"] = -1
-            fields["hardware"] = -1
-            fields["location_type"] = -1
-            fields["private"] = -1
-            fields["latitude"] = -1
-            fields["longitude"] = -1
-            fields["firmware_version"] = -1
-            fields["firmware_upgrade"] = -1
+            fields.update(API_DEVICE_FIELDS)
 
         params = {
             "fields": ",".join(fields),
@@ -147,25 +128,20 @@ class PurpleAirApiV1:
             URL_API_V1_SENSORS, headers=self._headers, params=params
         ) as resp:
             if resp.status >= HTTPStatus.INTERNAL_SERVER_ERROR:
-                # TODO: raise appropriate error for 5xx response
-                _LOGGER.error(
-                    "PurpleAir API server error: %s %s", resp.status, resp.reason
-                )
-                return None
+                reason = str(resp.reason) if resp.reason else "Unknown"
+                raise PurpleAirServerApiError(resp.status, reason)
 
             raw_data: ApiResponse = await resp.json()
 
             if not resp.ok:
-                # TODO: raise appropriate error for 4xx response
                 error_data = cast(ApiErrorResponse, raw_data)
-                _LOGGER.warning(
-                    "HTTP not OK. %s %s. error: %s (%s)",
+                reason = str(resp.reason) if resp.reason else "Unknown"
+                raise PurpleAirApiDataError(
                     resp.status,
-                    resp.reason,
+                    reason,
                     error_data["description"],
                     error_data["error"],
                 )
-                return None
 
         _LOGGER.debug("raw data: %s", raw_data)
 

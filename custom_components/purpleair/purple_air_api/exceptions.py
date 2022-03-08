@@ -16,6 +16,10 @@ class PurpleAirApiError(Exception):
         super().__init__()
         self.message = message
 
+    def __str__(self):
+        """Return a string representation of this error."""
+        return f"[{self.__class__.__name__}]: {self.message}"
+
 
 class PurpleAirApiInvalidResponseError(PurpleAirApiError):
     """Raised when the data from PurpleAir cannot be parsed.

@@ -8,9 +8,10 @@ from typing import TYPE_CHECKING, Callable, Dict, Protocol
 
 from homeassistant.helpers import device_registry
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import DOMAIN
+from .purple_air_api.v1.exceptions import PurpleAirApiDataError, PurpleAirServerApiError
 from .purple_air_api.v1.model import NormalizedApiData
 
 if TYPE_CHECKING:
@@ -42,7 +43,7 @@ class ApiProtocol(Protocol):
 
     async def async_update(
         self, do_device_update: bool
-    ) -> dict[str, NormalizedApiData] | None:
+    ) -> dict[str, NormalizedApiData]:
         """Update method for the Data Update Coordinator to call."""
         ...
 
@@ -119,8 +120,12 @@ class PurpleAirDataUpdateCoordinator(
         if not self.api:
             return {}
 
-        data = await self.api.async_update(self.do_device_update)
-        if data and [s["device"] for s in data.values() if s["device"]]:
+        try:
+            data = await self.api.async_update(self.do_device_update)
+        except (PurpleAirApiDataError, PurpleAirServerApiError) as err:
+            raise UpdateFailed(str(err)) from err
+
+        if [s["device"] for s in data.values() if s["device"]]:
             self._last_device_refresh = datetime.utcnow()
 
             devices: dict[str, DeviceReading] = {}
@@ -130,7 +135,7 @@ class PurpleAirDataUpdateCoordinator(
 
             self.hass.async_add_job(self._async_update_devices, devices)
 
-        return data if data else {}
+        return data
 
     @property
     def do_device_update(self) -> bool:

@@ -10,6 +10,35 @@ URL_API_V1_SENSOR: Final = "https://api.purpleair.com/v1/sensors/{pa_sensor_id}"
 
 URL_API_V1_SENSORS: Final = "https://api.purpleair.com/v1/sensors"
 
+API_SENSOR_FIELDS: Final = {
+    "sensor_index": -1,
+    "rssi": -1,
+    "analog_input": -1,
+    "last_seen": -1,
+    "channel_state": -1,
+    "channel_flags": -1,
+    "confidence": -1,
+    "humidity": -1,
+    "temperature": -1,
+    "pressure": -1,
+    "pm1.0_atm": -1,
+    "pm2.5_atm": -1,
+    "pm2.5_cf_1": -1,
+    "pm10.0_atm": -1,
+    "uptime": -1,
+}
+
+API_DEVICE_FIELDS: Final = {
+    "model": -1,
+    "hardware": -1,
+    "location_type": -1,
+    "private": -1,
+    "latitude": -1,
+    "longitude": -1,
+    "firmware_version": -1,
+    "firmware_upgrade": -1,
+}
+
 API_INT_VALUES: Final = [
     "rssi",
     "uptime",
