@@ -34,19 +34,17 @@ async def async_setup_entry(
     """Create associated v1 sensors for Home Assistant."""
     config = PurpleAirConfigEntry(**config_entry.data)
     domain_data: PurpleAirDomainData = hass.data[DOMAIN]
-    coordinator_v1 = domain_data.coordinator_v1
+    coordinator = domain_data.coordinator_v1
 
-    if not coordinator_v1:
+    if not coordinator:
         _LOGGER.error("Attempting to set up v1 sensors with invalid configuration")
         return
 
     # we will expose only one AQI sensor here for future 2021.12 option flow
-    entities: list[Entity] = [PurpleAirAqiSensor(config, coordinator_v1)]
+    entities: list[Entity] = [PurpleAirAqiSensor(config, coordinator)]
 
     for sensor_description in SIMPLE_SENSOR_DESCRIPTIONS:
-        entities.append(
-            PurpleAirSimpleSensor(config, coordinator_v1, sensor_description)
-        )
+        entities.append(PurpleAirSimpleSensor(config, coordinator, sensor_description))
 
     async_schedule_add_entities(entities, False)
 

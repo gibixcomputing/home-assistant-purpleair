@@ -257,8 +257,6 @@ class PurpleAirConfigFlow(ConfigFlow):
     ) -> tuple[PurpleAirConfigEntry | None, dict[str, str]]:
         """Create a new PurpleAirConfigEntry from the user input."""
 
-        # PurpleAirApiConfigError
-
         errors: dict[str, str] = {}
         vol_step = ""
         try:

@@ -43,6 +43,7 @@ class PurpleAirApiV1:
     _cache: EpaAvgValueCache
     _headers: dict[str, str]
     _last_device_refresh: datetime | None
+    _warn_missing_fields: bool
 
     def __init__(self, session: ClientSession, api_key: str):
         """Create a new instance of the PurpleAirApiV1 API."""
@@ -56,6 +57,7 @@ class PurpleAirApiV1:
             "Accept": "application/json",
             "X-API-Key": api_key,
         }
+        self._warn_missing_fields = False
 
         _LOGGER.debug("Created v1 API instance for API key: %s", self.api_key)
 
@@ -146,7 +148,7 @@ class PurpleAirApiV1:
         _LOGGER.debug("raw data: %s", raw_data)
 
         data = cast(ApiSensorResponse, raw_data)
-        _update_fields_position(fields, data["fields"])
+        self._update_fields_position(fields, data["fields"])
         sensor_data = _read_sensor_data(fields, data, do_device_update)
         apply_sensor_corrections(sensor_data)
         add_aqi_calculations(sensor_data, cache=self._cache)
@@ -154,23 +156,29 @@ class PurpleAirApiV1:
         _LOGGER.debug("sensor data: %s", sensor_data)
         return sensor_data
 
+    def _update_fields_position(
+        self, fields: dict[str, int], api_fields: list[str]
+    ) -> None:
+        """Map response fields to their index position."""
 
-def _update_fields_position(fields: dict[str, int], api_fields: list[str]) -> None:
-    """Map response fields to their index position."""
+        for key in fields.keys():
+            if key in api_fields:
+                fields[key] = api_fields.index(key)
 
-    for key in fields.keys():
-        if key in api_fields:
-            fields[key] = api_fields.index(key)
+        missing_fields = {field for (field, index) in fields.items() if index == -1}
+        if missing_fields:
+            for field in missing_fields:
+                del fields[field]
 
-    missing_fields = {field for (field, index) in fields.items() if index == -1}
-    if missing_fields:
-        for field in missing_fields:
-            del fields[field]
+            if not self._warn_missing_fields:
+                _LOGGER.warning(
+                    "API response did not include requested fields: %s", missing_fields
+                )
 
-        # TODO: hook in to warning system
-        _LOGGER.warning(
-            "API response did not include requested fields: %s", missing_fields
-        )
+                self._warn_missing_fields = True
+        elif self._warn_missing_fields:
+            _LOGGER.info("API is now returning all expected fields")
+            self._warn_missing_fields = False
 
 
 def _read_sensor_data(

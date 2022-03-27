@@ -57,7 +57,7 @@ class PurpleAirDataUpdateCoordinator(
     _last_device_refresh: datetime | None
 
     def __init__(
-        self, api: Callable[[ClientSession, str], ApiProtocol], *args, **kwargs
+        self, api_factory: Callable[[ClientSession, str], ApiProtocol], *args, **kwargs
     ):
         """Create a new PurpleAirDataUpdateCoordinator.
 
@@ -69,7 +69,7 @@ class PurpleAirDataUpdateCoordinator(
 
         self.data: dict[str, NormalizedApiData] = {}
         self.api = None
-        self._api_cls = api
+        self._api_factory = api_factory
         self._last_device_refresh = None
 
     def register_sensor(
@@ -84,15 +84,15 @@ class PurpleAirDataUpdateCoordinator(
 
         if not self.api:
             session = async_get_clientsession(self.hass)
-            self.api = self._api_cls(session, api_key)
+            self.api = self._api_factory(session, api_key)
 
         self.api.register_sensor(pa_sensor_id, name, hidden, read_key)
 
         # clear the last device update so we fetch device data next refresh!
         self._last_device_refresh = None
 
-        # request an update if we've had enough sensors register or we're adding
-        # a new one
+        # request an update if we've had enough sensors register during startup or
+        # we're adding a new one
         if self.get_sensor_count() >= self._domain_data.expected_entries_v1:
             self._domain_data.expected_entries_v1 = 0
             self.hass.async_add_job(
@@ -121,7 +121,7 @@ class PurpleAirDataUpdateCoordinator(
             return {}
 
         try:
-            data = await self.api.async_update(self.do_device_update)
+            data = await self.api.async_update(self.should_update_devices)
         except (PurpleAirApiDataError, PurpleAirServerApiError) as err:
             raise UpdateFailed(str(err)) from err
 
@@ -138,7 +138,7 @@ class PurpleAirDataUpdateCoordinator(
         return data
 
     @property
-    def do_device_update(self) -> bool:
+    def should_update_devices(self) -> bool:
         """Indicate if this update should include device data."""
 
         if not self._last_device_refresh:
@@ -175,7 +175,7 @@ class PurpleAirDataUpdateCoordinator(
             config_entry = find_entry(pa_sensor_id)
             if not config_entry:
                 _LOGGER.debug(
-                    "could not find matching device for pa_sensor_id: %s", pa_sensor_id
+                    "could not find matching config for pa_sensor_id: %s", pa_sensor_id
                 )
                 continue
 

@@ -1,4 +1,3 @@
-# pylint: disable=unused-argument
 """The PurpleAir integration."""
 from __future__ import annotations
 
@@ -77,11 +76,6 @@ async def async_setup(hass: HomeAssistant, config: None) -> bool:
     expected_entries_v0 = len({e for e in entries if e.data.get("api_version") == 0})
     expected_entries_v1 = len({e for e in entries if e.data.get("api_version") == 1})
 
-    # Support v0 and v1 APIs during transition period
-    api_v0 = None
-    coordinator_v0 = None
-    coordinator_v1 = None
-
     _LOGGER.info("Adding support for v1 PurpleAir sensors.")
 
     coordinator_v1 = PurpleAirDataUpdateCoordinator(
@@ -93,8 +87,8 @@ async def async_setup(hass: HomeAssistant, config: None) -> bool:
     )
 
     hass.data[DOMAIN] = PurpleAirDomainData(
-        api=api_v0,
-        coordinator=coordinator_v0,
+        api=None,
+        coordinator=None,
         coordinator_v1=coordinator_v1,
         expected_entries=expected_entries_v0,
         expected_entries_v1=expected_entries_v1,
@@ -110,7 +104,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     domain_data: PurpleAirDomainData = hass.data[DOMAIN]
 
     if config.api_version == 0 and not domain_data.coordinator:
-        _LOGGER.warning("Legacy API PurpleAir sensors detected.")
+        _LOGGER.warning("Legacy v0 PurpleAir sensors detected")
 
         session = async_get_clientsession(hass)
         api_v0 = PurpleAirApi(session)

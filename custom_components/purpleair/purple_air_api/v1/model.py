@@ -84,7 +84,7 @@ class DeviceReading:
             )
             return
 
-        # incoming field names may have device attributes, so this isn't an error.
+        # incoming field names may have sensor attributes, so this isn't an error.
         normalized_value = name.replace(".", "_")
         if not hasattr(self, normalized_value):
             return
