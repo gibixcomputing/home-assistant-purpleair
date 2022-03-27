@@ -35,7 +35,7 @@ def add_aqi_calculations(
 
     for sensor_data in sensors.values():
         sensor = sensor_data["sensor"]
-        if sensor.pm2_5_atm:
+        if sensor.pm2_5_atm is not None:
             instant_aqi = calc_aqi(sensor.pm2_5_atm, "pm2_5")
             sensor.set_additional_value("pm2_5_aqi_instant", instant_aqi)
 
