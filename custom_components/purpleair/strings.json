@@ -3,21 +3,62 @@
   "config": {
     "step": {
       "user": {
-        "description": "To connect to a PurpleAir station, find the station you want to configure on the PurpleAir map, select it, and in the popup, right click on \"Get This Widget\" and copy the station data link.\n\nA device will be created with basic data and will be populated on the next data pull.",
-        "title": "Connect to a PurpleAir Station",
+        "title": "Connect a PurpleAir Station",
+        "description": "To connect to a PurpleAir station, you will first need a free API key. \\\nEmail [contact@purpleair.com](mailto:contact@purpleair.com) to receive an API key.\n\nIn order to add the station, please locate the station on the [PurpleAir map](https://map.purpleair.com), select it, click on \"Get this Widget\" and finally, click on \"Download Data\". In the resulting page, grab the URL (which should look like \"/sensorlist?key=ABC&show=123\"), copy the \"show\" value to the station ID field and copy the \"key\" string to the station read key.\n\nA device will be created with basic data and will be populated on the next data pull.",
         "data": {
-          "url": "Station JSON URL"
+          "api_key": "Your API read key you received from PurpleAir",
+          "id": "PurpleAir station ID you want to monitor",
+          "sensor_read_key": "The station read key if the sensor is hidden (Optional)"
+        }
+      },
+      "add_sensor": {
+        "title": "Connect a PurpleAir Station",
+        "description": "To add another station, please locate the station on the [PurpleAir map](https://map.purpleair.com), select it, click on \"Get this Widget\" and finally, click on \"Download Data\". In the resulting page, grab the URL (which should look like \"/sensorlist?key=ABC&show=123\"), copy the \"show\" value to the station ID field and copy the \"key\" string to the station read key.",
+        "data": {
+          "id": "PurpleAir station ID you want to monitor (show value)",
+          "sensor_read_key": "The station read key if the sensor is hidden (Optional)"
+        }
+      },
+      "legacy_migrate_auto": {
+        "title": "Update PurpleAir sensor to use the new API",
+        "description": "This sensor can be automatically migrated to the new API. Simply continue to migrate this sensor or cancel",
+        "data": {}
+      },
+      "legacy_migrate_with_api_key": {
+        "title": "Update PurpleAir sensor to use the new API",
+        "description": "We were unable to automatically migrate your PurpleAir sensor to the new API. Please double check the data below is entered correctly and migrate when you are ready. If there are problems, the error messages should help identify the problem.",
+        "data": {
+          "api_key": "Your API read key you received from PurpleAir",
+          "id": "PurpleAir station ID you want to monitor",
+          "sensor_read_key": "The station read key if the sensor is hidden (Optional)"
+        }
+      },
+      "legacy_migrate_without_api_key": {
+        "title": "Update PurpleAir sensor to use the new API",
+        "description": "This sensor needs to be updated to use the new PurpleAir API. This new API is much faster but requires free registration to get an API key.\n\nYou can get an API key by sending an email to [contact@purpleair.com](mailto:contact@purpleair.com). This sensor will continue to work with the legacy API but an stop working any time. You can come back and resume migration once you have your API key.",
+        "data": {
+          "api_key": "Your API read key you received from PurpleAir",
+          "id": "PurpleAir station ID you want to monitor",
+          "sensor_read_key": "The station read key if the sensor is hidden (Optional)"
         }
       }
     },
     "error": {
+      "api_key_bad_status": "The API key returned with a bad status, please try again in a moment.",
+      "api_key_forbidden": "The API key was invalid or restricted. Double check the key is correct. The logs may contain more details",
+      "api_key_missing": "An API key needs to be provided to access the PurpleAir API.",
+      "api_key_not_read_key": "The API key given was not a \"READ\" key, please provide your API \"READ\" key.",
+      "id_missing": "The sensor ID was not provided.",
+      "id_not_found": "The sensor was not found. If the sensor is hidden, you must provide the sensor read key below.",
+      "id_bad_read_key": "The sensor was found, but the read key did not match. If this is a public sensor, remove the sensor read key below. Otherwise, double check the correct key was entered.",
       "bad_data": "PurpleAir API returned unrecognized data. See the logs for more information.",
       "bad_status": "PurpleAir API returned a bad status code. See the logs for more information.",
-      "unknown": "An unknown error occurred during setup. See the logs for more information.",
-      "url": "Invalid URL provided. Please make sure you copied the link from\n    \"Get This Widget\" > \"Download\""
+      "unknown": "An unknown error occurred during setup. See the logs for more information."
     },
     "abort": {
-      "already_configured": "This PurpleAir station ID is already registered."
+      "already_configured": "This PurpleAir station ID is already registered.",
+      "legacy_migrate_success": "The PurpleAir sensor was successfully migrated.",
+      "unrecognized_reauth": "The reauthentication request was not understood."
     }
   }
 }

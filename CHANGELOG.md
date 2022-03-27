@@ -1,6 +1,64 @@
 # Releases
 
+Current release: **3.0.0**
+
+
+## 3.0.0
+
+**MINIMUM HA VERSION**: 2021.11.5
+
+This adds support for the new PurpleAir v1 API and the usage of API READ
+keys. Existing sensors will be treated as "v0 legacy" sensors and will
+be marked as needing an upgrade via the reauthentication flow. This
+gives you time to request an API key from PurpleAir (see README) and
+upgrade when you are able. **The next major version (4.0.0) will remove
+support for legacy sensors!** The upgrade flow has been designed to be
+as painless and helpful as possible.
+
+
+### Major Changes
+
+* Added PurpleAir API v1 support. New sensors can only be added with v1
+  support. No legacy sensors can be added.
+
+* Minimum required HA version bumped from 2021.08 to 2021.11.5.
+
+* Updated config flow logic to allow for upgrading legacy sensors in
+  place and validating and sharing API key configuration.
+
+
+### Minor Changes
+
+* Config entries now track which API version they use.
+
+* Fixed a bug where incorrect data was stored in the config entry
+  `hidden` field.
+
+* Fixed a bug where all HA sensors were activated by default, rather
+  than only enabling the AQI sensor and making the rest optional.
+
+* Updated error messages to be more useful and descriptive.
+
+
+### Code Changes
+
+* Added namespaces to the API to help with future upgrades and made the
+  HA related logic as API agnostic as possible.
+
+* Utilized the `pytest-homeassistant-custom-component` python package to
+  bring the code standards up to date. Linted using `pyupgrade
+  --py38-plus`, `isort`, `black --fast`, `codespell`, `flake8`,
+  `pylint`, and `mypy` with compatible settings. Added GitLab CI.
+
+
+### Related issues
+
+Fixes #6, #16, #17, #18, #19, #20, #21, #22.
+
+
 ## 2.1.0
+
+**MINIMUM HA VERSION**: 2021.08
 
 Fixes a couple annoyances:
 
@@ -13,7 +71,7 @@ Fixes a couple annoyances:
   state of the PA sensor could be added, which may make it easier to
   report sensor issues instead of the log and sensor attributes.
 
-### Releated issues
+### Related issues
 
 Fixes #11, #12, #14, #15.
 

@@ -12,8 +12,13 @@ class PurpleAirApiError(Exception):
     """
 
     def __init__(self, message: str):
+        """Create a new PurpleAirApiError."""
         super().__init__()
         self.message = message
+
+    def __str__(self):
+        """Return a string representation of this error."""
+        return f"[{self.__class__.__name__}]: {self.message}"
 
 
 class PurpleAirApiInvalidResponseError(PurpleAirApiError):
@@ -25,6 +30,8 @@ class PurpleAirApiInvalidResponseError(PurpleAirApiError):
     """
 
     def __init__(self, message: str, data: Any):
+        """Create a new PurpleAirApiInvalidResponseError."""
+
         super().__init__(message)
         self.data = data
 
@@ -40,7 +47,11 @@ class PurpleAirApiStatusError(PurpleAirApiError):
     """
 
     def __init__(self, url: str, status: int, text: str):
-        super().__init__('An error occurred while communicating with the PurpleAir API.')
+        """Create a new PurpleAirApiStatusError."""
+
+        super().__init__(
+            "An error occurred while communicating with the PurpleAir API."
+        )
         self.url = url
         self.status = status
         self.text = text
@@ -55,5 +66,7 @@ class PurpleAirApiUrlError(PurpleAirApiError):
     """
 
     def __init__(self, message: str, url: str):
+        """Create a new PurpleAirApiUrlError."""
+
         super().__init__(message)
         self.url = url
