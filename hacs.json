@@ -1,0 +1,6 @@
+{
+  "name": "PurpleAir",
+  "content_in_root": false,
+  "domains": ["sensor"],
+  "homeassistant": "2021.11.5"
+}

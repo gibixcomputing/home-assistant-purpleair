@@ -22,3 +22,7 @@ pyupgrade==2.27.0
 # Local packages installed prior to requirements file
 mypy==0.910
 pylint==2.10.2
+
+# Pin click to 8.0.4 for black 21.9b0. This can be remove
+# when black 22.3.0 or later is used
+click==8.0.4
