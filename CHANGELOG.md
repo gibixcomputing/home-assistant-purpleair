@@ -1,6 +1,10 @@
 # Releases
 
-Current release: **3.0.0**
+Current release: **3.0.1**
+
+## 3.0.1
+
+Adds HACS support.
 
 
 ## 3.0.0
