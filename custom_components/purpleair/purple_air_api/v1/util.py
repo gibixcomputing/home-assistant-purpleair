@@ -61,7 +61,9 @@ def add_aqi_calculations(
             # See https://www.epa.gov/sites/default/files/2021-05/documents/toolsresourceswebinar_purpleairsmoke_210519b.pdf
             pm25_corrected = (0.52 * pm25cf1_avg) - (0.086 * humidity_avg) + 5.75
             if pm25cf1_avg > 343:
-                pm25_corrected = (0.46 * pm25cf1_avg) + (3.93E-4 * pm25cf1_avg * pm25cf1_avg) + 2.97
+                pm25_corrected = (
+                    (0.46 * pm25cf1_avg) + (3.93e-4 * pm25cf1_avg * pm25cf1_avg) + 2.97
+                )
             pm25_corrected = round(max(0, pm25_corrected), 1)
             pm25_corrected_aqi = calc_aqi(pm25_corrected, "pm2_5")
 
