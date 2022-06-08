@@ -1,10 +1,33 @@
 # Releases
 
-Current release: **3.0.1**
+Current release: **3.1.0**
+
+## 3.1.0
+
+Update EPA correction algorithm to 2021 data with a revised normal
+formula and a new formula for PM2.5 concentrations > 343. See
+[toolsresourceswebinar_purpleairsmoke_210519b.pdf][epa-smoke] for the
+full details of the formula.
+
+  - Contributed by Daniel Myers (@danielsmyers)
+
+[epa-smoke]: https://www.epa.gov/sites/default/files/2021-05/documents/toolsresourceswebinar_purpleairsmoke_210519b.pdf
+
+
+### Bug Fixes
+
+* Calculated AQI should never go "NaN" as it is now clamped to 0 and has
+  a proper check for 0 vs None.
+  Contribured by Daniel Myers (@danielsmyers)
+
+Thanks for the contributions, Daniel!
+
+
 
 ## 3.0.1
 
 Adds HACS support.
+
 
 
 ## 3.0.0
@@ -60,6 +83,7 @@ as painless and helpful as possible.
 Fixes #6, #16, #17, #18, #19, #20, #21, #22.
 
 
+
 ## 2.1.0
 
 **MINIMUM HA VERSION**: 2021.08
@@ -75,15 +99,18 @@ Fixes a couple annoyances:
   state of the PA sensor could be added, which may make it easier to
   report sensor issues instead of the log and sensor attributes.
 
+
 ### Related issues
 
 Fixes #11, #12, #14, #15.
+
 
 
 ## 2.0.2
 
 Support Python 3.8 typings. `deque` and `dict` are not subscriptable
 when creating a type alias.
+
 
 
 ## 2.0.1
@@ -138,16 +165,17 @@ enabled if desired.
   or if a dual laser sensor has faulty readings.
 
 
-
 ### Related Issues
 
 Fixes #2, #5, and #7.
+
 
 
 ## 1.1.0
 
 * Adds support for private hidden sensors and indoor sensors. Fixes #3
   and #4.
+
 
 
 ## 1.0.0

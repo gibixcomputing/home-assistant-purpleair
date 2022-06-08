@@ -20,3 +20,29 @@ to allow you to upgrade the component and migrate once you have your
 key.
 
 {% endif %}
+
+{% set ver = version_installed.replace("v", "").replace(".","") | int %}
+
+## What's New
+
+{% if ver < 310 %}
+### 3.1.0
+
+Update EPA correction algorithm to 2021 data with a revised normal
+formula and a new formula for PM2.5 concentrations > 343. See
+[toolsresourceswebinar_purpleairsmoke_210519b.pdf][epa-smoke] for the
+full details of the formula.
+
+  - Contributed by Daniel Myers (@danielsmyers)
+
+[epa-smoke]: https://www.epa.gov/sites/default/files/2021-05/documents/toolsresourceswebinar_purpleairsmoke_210519b.pdf
+
+
+#### Bug Fixes
+
+* Calculated AQI should never go "NaN" as it is now clamped to 0 and has
+  a proper check for 0 vs None.
+  Contribured by Daniel Myers (@danielsmyers)
+
+Thanks for the contributions, Daniel!
+{% endif %}
