@@ -123,7 +123,7 @@ class PurpleAirAqiSensor(PASensorBase, SensorEntity):
         if not (data := self._get_sensor_data()):
             return False
 
-        if not data.pm2_5_aqi_epa or not data.last_seen:
+        if data.pm2_5_aqi_epa is None or not data.last_seen:
             return False
 
         now = dt.utcnow()
