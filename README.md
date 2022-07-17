@@ -225,6 +225,7 @@ To find a sensor to integrate:
    PurpleAir integration.\
    [![Open your Home Assistant instance and start setting up a new
    integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=purpleair)
+   * If the integration does not appear, refresh your browser tab and search again.
 7. If required, paste your API READ key. This field will be hidden if
    you are adding another sensor.
 8. Copy the value for `show` from the URL and paste it in the *PurpleAir
