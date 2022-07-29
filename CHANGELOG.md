@@ -1,6 +1,14 @@
 # Releases
 
-Current release: **3.1.0**
+Current release: **3.1.1**
+
+## 3.1.1
+
+Correct an error when configuring a new PurpleAir API sensor.
+
+  - Contributed by Michael Borohovski (@borski1). Thanks Michael!
+
+README updates contributed by Erick Hitter (@ethitter). Thanks Erick!
 
 ## 3.1.0
 
@@ -18,7 +26,7 @@ full details of the formula.
 
 * Calculated AQI should never go "NaN" as it is now clamped to 0 and has
   a proper check for 0 vs None.
-  Contribured by Daniel Myers (@danielsmyers)
+  Contributed by Daniel Myers (@danielsmyers)
 
 Thanks for the contributions, Daniel!
 

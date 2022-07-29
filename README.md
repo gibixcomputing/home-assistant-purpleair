@@ -8,7 +8,7 @@ as sensors connected to the PurpleAir sensor.
 # Minimum Required Home Assistant Version: **2021.11.5**
 This release has been tested on **2021.11.5**. There is no guarantee of
 backwards compatibility. The next major version of this component will
-require **2022.03**.
+require a newer version of Home Assistant (TBD).
 
 
 # Important upgrade information for 3.0
@@ -88,6 +88,16 @@ updating value.
 
 
 # Installation
+This can be installed via HACS (using the github mirror) or manually.
+
+
+## HACS
+
+HACS support is available via the [github mirror][5]. Please use that
+URL instead of gitlab, since HACS does not support gitlab repositories.
+
+
+## Manual Installation
 
 Simply copy the `custom_components/purpleair` directory to your Home
 Assistant configuration's `custom_components` directory (you may need to
@@ -346,3 +356,5 @@ monitoring everyone can use"
 [3]: https://api.purpleair.com/ "PurpleAir API"
 
 [4]: https://docs.google.com/document/d/15ijz94dXJ-YAZLi9iZ_RaBwrZ4KtYeCy08goGBwnbCU/edit "Legacy v0 PurpleAir API documentation (Google Doc)"
+
+[5]: https://github.com/gibixcomputing/home-assistant-purpleair "Github Mirror"

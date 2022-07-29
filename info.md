@@ -4,8 +4,8 @@ This custom component leverages the PurpleAir API to pull in air quality
 reports from sensors in your area. **You will need to register for a
 free API key!**
 
-The next version of this component will require at least Home Assistant
-2022.3.
+The next version of this component will require a newer version of
+Home Assistant (TBD).
 
 {% if not installed %}
 
@@ -24,6 +24,16 @@ key.
 {% set ver = version_installed.replace("v", "").replace(".","") | int %}
 
 ## What's New
+
+{% if ver < 311 %}
+
+Fixes an issue when adding sensors.
+
+  - Contributed by Michael Borohovski (@borski1). Thanks Michael!
+
+README updates contributed by Erick Hitter (@ethitter). Thanks Erick!
+
+{% endif %}
 
 {% if ver < 310 %}
 ### 3.1.0
