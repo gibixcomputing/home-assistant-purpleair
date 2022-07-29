@@ -231,7 +231,6 @@ async def get_api_sensor_config(
         "name",
         "primary_key_a",
         "private",
-        "sensor_index",
     ]
 
     url = URL_API_V1_SENSOR.format(pa_sensor_id=pa_sensor_id)
