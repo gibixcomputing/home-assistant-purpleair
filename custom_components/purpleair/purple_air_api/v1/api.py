@@ -61,7 +61,7 @@ class PurpleAirApiV1:
 
         _LOGGER.debug("Created v1 API instance for API key: %s", self.api_key)
 
-    def get_sensor_count(self):
+    def get_sensor_count(self) -> int:
         """Get the number of sensors registered with this instance."""
         return len(self.sensors)
 

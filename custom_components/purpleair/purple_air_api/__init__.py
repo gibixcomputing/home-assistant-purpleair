@@ -13,7 +13,7 @@ from .exceptions import (
     PurpleAirApiStatusError,
     PurpleAirApiUrlError,
 )
-from .model import EpaAvgValueCache, PurpleAirApiConfigEntry
+from .model import EpaAvgValueCache, PurpleAirApiConfigEntry, PurpleAirApiSensorData
 from .util import (
     add_aqi_calculations,
     build_sensors,
@@ -41,13 +41,13 @@ class PurpleAirApi:
         self._api_issues = False
         self._cache = create_epa_value_cache()
 
-    def get_sensor_count(self):
+    def get_sensor_count(self) -> int:
         """Get the number of sensors registered with this instance."""
         return len(self.sensors)
 
     def register_sensor(
         self, pa_sensor_id: str, title: str, hidden: bool, key: str | None = None
-    ):
+    ) -> None:
         """Register a PurpleAir sensor with this instance."""
 
         if pa_sensor_id in self.sensors:
@@ -61,7 +61,7 @@ class PurpleAirApi:
         self.sensors[pa_sensor_id] = sensor
         _LOGGER.debug("registered new sensor: %s", sensor)
 
-    def unregister_sensor(self, pa_sensor_id: str):
+    def unregister_sensor(self, pa_sensor_id: str) -> None:
         """Unregisters a sensor from this instance and removes any associated data."""
 
         if pa_sensor_id not in self.sensors:
@@ -71,7 +71,7 @@ class PurpleAirApi:
         del self.sensors[pa_sensor_id]
         _LOGGER.debug("unregistered sensor: %s", pa_sensor_id)
 
-    async def update(self):
+    async def update(self) -> dict[str, PurpleAirApiSensorData]:
         """Update sensor data from the PurpleAir API."""
 
         public_sensors = [s.pa_sensor_id for s in self.sensors.values() if not s.hidden]
@@ -208,7 +208,7 @@ async def get_sensor_configuration(
 
         data = await response.json()
 
-    results = data.get("results", [])  # type: ignore
+    results = data.get("results", [])  # type: ignore[var-annotated]
     if not results or len(results) == 0:
         raise PurpleAirApiInvalidResponseError(
             "Missing results from JSON response", results

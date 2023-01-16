@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 import logging
-from typing import TYPE_CHECKING, Callable, Dict, Protocol
+from typing import TYPE_CHECKING, Any, Callable, Protocol
 
 from homeassistant.helpers import device_registry
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -16,6 +16,7 @@ from .purple_air_api.v1.model import NormalizedApiData
 
 if TYPE_CHECKING:
     from aiohttp import ClientSession
+
     from homeassistant.config_entries import ConfigEntry
 
     from .model import PurpleAirDomainData
@@ -49,7 +50,7 @@ class ApiProtocol(Protocol):
 
 
 class PurpleAirDataUpdateCoordinator(
-    DataUpdateCoordinator[Dict[str, NormalizedApiData]]
+    DataUpdateCoordinator[dict[str, NormalizedApiData]]
 ):
     """Manage coordination between the API and DataUpdateCoordinator."""
 
@@ -57,7 +58,10 @@ class PurpleAirDataUpdateCoordinator(
     _last_device_refresh: datetime | None
 
     def __init__(
-        self, api_factory: Callable[[ClientSession, str], ApiProtocol], *args, **kwargs
+        self,
+        api_factory: Callable[[ClientSession, str], ApiProtocol],
+        *args: Any,
+        **kwargs: Any,
     ):
         """Create a new PurpleAirDataUpdateCoordinator.
 
@@ -149,7 +153,7 @@ class PurpleAirDataUpdateCoordinator(
 
     @property
     def _domain_data(self) -> PurpleAirDomainData:
-        return self.hass.data[DOMAIN]
+        return self.hass.data[DOMAIN]  # type: ignore[no-any-return]
 
     async def _async_update_devices(self, devices: dict[str, DeviceReading]) -> None:
         _LOGGER.info("device update! %s", devices)

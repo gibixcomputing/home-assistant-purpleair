@@ -16,7 +16,7 @@ class PurpleAirApiError(Exception):
         super().__init__()
         self.message = message
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Return a string representation of this error."""
         return f"[{self.__class__.__name__}]: {self.message}"
 

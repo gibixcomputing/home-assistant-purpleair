@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Deque, Dict
+from typing import Deque
 
 
 @dataclass
@@ -84,11 +84,11 @@ class PurpleAirApiSensorReading:
 
         return a_has_data and b_has_data
 
-    def clear_temporary_data(self):
+    def clear_temporary_data(self) -> None:
         """Clear the temporary channel readings."""
         self.channels.clear()
 
-    def get_channel(self, channel) -> dict[str, float]:
+    def get_channel(self, channel: str) -> dict[str, float]:
         """
         Get the internal channel readings dictionary for channel A or B.
 
@@ -115,9 +115,9 @@ class PurpleAirApiSensorReading:
 
     def get_value(self, attr: str) -> int | float:
         """Get the given sensor attribute reading."""
-        return getattr(self, attr)
+        return getattr(self, attr)  # type: ignore[no-any-return]
 
-    def set_status(self, attr: str, status: str):
+    def set_status(self, attr: str, status: str) -> None:
         """Set the status for the given sensor attribute."""
         self.status[attr] = status
 
@@ -126,7 +126,7 @@ class PurpleAirApiSensorReading:
         attr: str,
         value: int | float | None,
         confidence: str | None = None,
-    ):
+    ) -> None:
         """
         Set the computed value for the given sensor.
 
@@ -216,5 +216,5 @@ class EpaAvgValue:
     timestamp: datetime = field(default_factory=datetime.utcnow)
 
 
-EpaAvgValueCache = Dict[str, Deque[EpaAvgValue]]
-PurpleAirApiSensorDataDict = Dict[str, PurpleAirApiSensorData]
+EpaAvgValueCache = dict[str, Deque[EpaAvgValue]]
+PurpleAirApiSensorDataDict = dict[str, PurpleAirApiSensorData]
