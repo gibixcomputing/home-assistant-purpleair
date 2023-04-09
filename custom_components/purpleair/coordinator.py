@@ -133,7 +133,7 @@ class PurpleAirDataUpdateCoordinator(
             self._last_device_refresh = datetime.utcnow()
 
             devices: dict[str, DeviceReading] = {}
-            for (pa_sensor_id, api_data) in data.items():
+            for pa_sensor_id, api_data in data.items():
                 if device_data := api_data["device"]:
                     devices[pa_sensor_id] = device_data
 
@@ -175,7 +175,7 @@ class PurpleAirDataUpdateCoordinator(
 
         registry = device_registry.async_get(self.hass)
 
-        for (pa_sensor_id, device_data) in devices.items():
+        for pa_sensor_id, device_data in devices.items():
             config_entry = find_entry(pa_sensor_id)
             if not config_entry:
                 _LOGGER.debug(
