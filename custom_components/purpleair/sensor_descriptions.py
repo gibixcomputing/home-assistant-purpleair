@@ -31,7 +31,7 @@ AqiSensorDescription = PASensorDescription(
     icon="mdi:weather-hazy",
     device_class=SensorDeviceClass.AQI,
     state_class=SensorStateClass.MEASUREMENT,
-    native_unit_of_measurement="AQI",
+    native_unit_of_measurement=None,
     entity_registry_enabled_default=True,
 )
 
@@ -42,7 +42,7 @@ SIMPLE_SENSOR_DESCRIPTIONS: Final = [
         icon="mdi:weather-hazy",
         device_class=SensorDeviceClass.AQI,
         state_class=SensorStateClass.MEASUREMENT,
-        native_unit_of_measurement="AQI",
+        native_unit_of_measurement=None,
         entity_registry_enabled_default=False,
         attr_name="pm2_5_aqi_instant",
     ),
