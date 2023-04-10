@@ -1,5 +1,4 @@
 [tool.black]
-target-version = ["py38"]
 exclude = "/(\\.direnv|\\.eggs|\\.git|\\.hg|\\.mypy_cache|\\.nox|\\.tox|\\.venv|venv|\\.svn|_build|buck-out|build|dist|generated)/"
 
 [tool.coverage.run]
@@ -16,33 +15,45 @@ show_missing = true
 [tool.isort]
 profile = "black"
 force_sort_within_sections = true
-known_first_party = ["custom_components", "tests"]
+known_first_party = ["custom_components", "homeassistant", "tests"]
 forced_separate = ["tests"]
 combine_as_imports = true
 
 [tool.mypy]
-python_version = "3.8"
-ignore_errors = false
-follow_imports = "normal"
-ignore_missing_imports = false
+python_version = "3.10"
+show_error_codes = true
+follow_imports = "silent"
+ignore_missing_imports = true
+local_partial_types = true
+strict_equality = true
+no_implicit_optional = true
 warn_incomplete_stub = true
 warn_redundant_casts = true
 warn_unused_configs = true
+warn_unused_ignores = true
+enable_error_code = ['ignore-without-code', 'redundant-self', 'truthy-iterable']
+disable_error_code = ['annotation-unchecked', 'no-any-return']
+strict_concatenate = false
+check_untyped_defs = true
+disallow_incomplete_defs = true
+#disallow_subclassing_any = true
+disallow_untyped_calls = true
+disallow_untyped_decorators = true
+disallow_untyped_defs = true
+warn_return_any = true
+warn_unreachable = true
 
-[[tool.mypy.overrides]]
-module = [
-    "homeassistant.*",
-    "voluptuous.*",
-]
-ignore_missing_imports = true
-
-[tool.pylint.MASTER]
-py-version = "3.8"
+[tool.pylint.MAIN]
+py-version = "3.10"
 ignore = ["tests"]
+fail-on = ["I"]
 load-plugins = [
     "pylint.extensions.code_style",
     "pylint.extensions.typing",
-    "pylint_strict_informational",
+    #"hass_enforce_type_hints",
+    #"hass_imports",
+    #"hass_logger",
+    #"pylint_per_file_ignores",
 ]
 persistent = false
 
@@ -66,12 +77,11 @@ good-names = ["Run", "T", "_", "db", "ev", "ex", "fp", "i", "id", "ip", "j", "k"
 # wrong-import-order - isort guards this
 # consider-using-f-string - str.format sometimes more readable
 # ---
-# Enable once current issues are fixed:
-# consider-using-namedtuple-or-dataclass (Pylint CodeStyle extension)
-# consider-using-assignment-expr (Pylint CodeStyle extension)
+# Pylint CodeStyle plugin
+# consider-using-namedtuple-or-dataclass - too opinionated
+# consider-using-assignment-expr - decision to use := better left to devs
 disable = [
     "format",
-    "abstract-class-little-used",
     "abstract-method",
     "cyclic-import",
     "duplicate-code",
@@ -92,12 +102,11 @@ disable = [
     "unused-argument",
     "wrong-import-order",
     "consider-using-f-string",
-    "fixme",  # temporary
-    #"consider-using-namedtuple-or-dataclass",
-    #"consider-using-assignment-expr",
+    "consider-using-namedtuple-or-dataclass",
+    "consider-using-assignment-expr",
 ]
 enable = [
-    "useless-suppression",  # temporarily every now and then to clean them up
+    #"useless-suppression",  # temporarily every now and then to clean them up
     "use-symbolic-message-instead",
 ]
 
@@ -106,7 +115,7 @@ score = false
 
 [tool.pylint.TYPECHECK]
 ignored-classes = [ "_CountingAttr" ]
-mixin-class-regex = ".*[Mm]ix[Ii]n"
+mixin-class-rgx = ".*[Mm]ix[Ii]n"
 #ignored-modules = homeassistant,aiohttp,voluptuous
 
 [tool.pylint.FORMAT]
@@ -114,9 +123,9 @@ expected-line-ending-format = "LF"
 
 [tool.pylint.EXCEPTIONS]
 overgeneral-exceptions = [
-    "BaseException",
-    "Exception",
-    "HomeAssistantError",
+    "builtin.BaseException",
+    "builtin.Exception",
+    "homeassistant.exceptions.HomeAssistantError",
 ]
 
 [tool.pylint.TYPING]

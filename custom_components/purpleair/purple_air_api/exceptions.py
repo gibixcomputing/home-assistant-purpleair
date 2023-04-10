@@ -11,7 +11,7 @@ class PurpleAirApiError(Exception):
         message -- An explanation of the error.
     """
 
-    def __init__(self, message: str):
+    def __init__(self, message: str) -> None:
         """Create a new PurpleAirApiError."""
         super().__init__()
         self.message = message
@@ -29,7 +29,7 @@ class PurpleAirApiInvalidResponseError(PurpleAirApiError):
       data    -- Data returned from the API call that could not be recognized.
     """
 
-    def __init__(self, message: str, data: Any):
+    def __init__(self, message: str, data: Any) -> None:
         """Create a new PurpleAirApiInvalidResponseError."""
 
         super().__init__(message)
@@ -46,7 +46,7 @@ class PurpleAirApiStatusError(PurpleAirApiError):
         text    -- Any data returned in the body of the error from the server.
     """
 
-    def __init__(self, url: str, status: int, text: str):
+    def __init__(self, url: str, status: int, text: str) -> None:
         """Create a new PurpleAirApiStatusError."""
 
         super().__init__(
@@ -65,7 +65,7 @@ class PurpleAirApiUrlError(PurpleAirApiError):
         url     -- The URL that is considered invalid.
     """
 
-    def __init__(self, message: str, url: str):
+    def __init__(self, message: str, url: str) -> None:
         """Create a new PurpleAirApiUrlError."""
 
         super().__init__(message)

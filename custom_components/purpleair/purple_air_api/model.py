@@ -1,9 +1,9 @@
 """Provides models for the PurpleAir API."""
 from __future__ import annotations
 
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Deque
 
 
 @dataclass
@@ -216,5 +216,5 @@ class EpaAvgValue:
     timestamp: datetime = field(default_factory=datetime.utcnow)
 
 
-EpaAvgValueCache = dict[str, Deque[EpaAvgValue]]
+EpaAvgValueCache = dict[str, deque[EpaAvgValue]]
 PurpleAirApiSensorDataDict = dict[str, PurpleAirApiSensorData]

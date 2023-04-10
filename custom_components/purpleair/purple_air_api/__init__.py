@@ -32,7 +32,7 @@ class PurpleAirApi:
     _api_issues: bool
     _cache: EpaAvgValueCache
 
-    def __init__(self, session: ClientSession):
+    def __init__(self, session: ClientSession) -> None:
         """Create a new PurpleAirApi instance."""
 
         self.sensors = {}

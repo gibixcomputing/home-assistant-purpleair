@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime
 import logging
-from typing import Deque, Literal, TypedDict, Union
+from typing import Literal, TypedDict
 
 from .const import API_VALUES
 
@@ -15,11 +16,11 @@ SENSOR_READING_ADDITIONAL_ATTRIBUTES = [
     "pm2_5_aqi_epa_status",
 ]
 
-SensorReadingAdditionalAttrsType = Union[
-    Literal["pm2_5_aqi_instant"],
-    Literal["pm2_5_aqi_epa"],
-    Literal["pm2_5_aqi_epa_status"],
-]
+SensorReadingAdditionalAttrsType = (
+    Literal["pm2_5_aqi_instant"]
+    | Literal["pm2_5_aqi_epa"]
+    | Literal["pm2_5_aqi_epa_status"]
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -107,7 +108,7 @@ class EpaAvgValue:
     timestamp: datetime = field(default_factory=datetime.utcnow)
 
 
-EpaAvgValueCache = dict[str, Deque[EpaAvgValue]]
+EpaAvgValueCache = dict[str, deque[EpaAvgValue]]
 
 
 class NormalizedApiData(TypedDict):

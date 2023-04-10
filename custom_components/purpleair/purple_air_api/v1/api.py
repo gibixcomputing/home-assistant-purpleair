@@ -45,7 +45,7 @@ class PurpleAirApiV1:
     _last_device_refresh: datetime | None
     _warn_missing_fields: bool
 
-    def __init__(self, session: ClientSession, api_key: str):
+    def __init__(self, session: ClientSession, api_key: str) -> None:
         """Create a new instance of the PurpleAirApiV1 API."""
 
         self.api_key = api_key

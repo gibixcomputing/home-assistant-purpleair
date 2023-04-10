@@ -3,12 +3,12 @@ from __future__ import annotations
 
 from typing import Final
 
-from homeassistant.components.sensor import STATE_CLASS_MEASUREMENT, SensorDeviceClass
+from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 from homeassistant.const import (
     CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
     PERCENTAGE,
-    PRESSURE_HPA,
-    TEMP_FAHRENHEIT,
+    UnitOfPressure,
+    UnitOfTemperature,
 )
 
 from .model import PurpleAirSensorEntityDescription
@@ -35,7 +35,7 @@ SENSOR_TYPES: tuple[PurpleAirSensorEntityDescription, ...] = (
         name="Air Quality Index",
         icon="mdi:weather-hazy",
         device_class=SensorDeviceClass.AQI,
-        state_class=STATE_CLASS_MEASUREMENT,
+        state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="AQI",
         unique_id_suffix="air_quality_index",
         enable_default=True,
@@ -46,7 +46,7 @@ SENSOR_TYPES: tuple[PurpleAirSensorEntityDescription, ...] = (
         name="Air Quality Index (Raw)",
         icon="mdi:weather-hazy",
         device_class=SensorDeviceClass.AQI,
-        state_class=STATE_CLASS_MEASUREMENT,
+        state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="AQI",
         unique_id_suffix="aqi_raw",
     ),
@@ -55,7 +55,7 @@ SENSOR_TYPES: tuple[PurpleAirSensorEntityDescription, ...] = (
         name="PM 2.5",
         icon="mdi:blur",
         device_class=SensorDeviceClass.PM25,
-        state_class=STATE_CLASS_MEASUREMENT,
+        state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
         unique_id_suffix="pm25",
     ),
@@ -64,7 +64,7 @@ SENSOR_TYPES: tuple[PurpleAirSensorEntityDescription, ...] = (
         name="PM 1.0",
         icon="mdi:blur",
         device_class=SensorDeviceClass.PM1,
-        state_class=STATE_CLASS_MEASUREMENT,
+        state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
         unique_id_suffix="pm1",
     ),
@@ -73,7 +73,7 @@ SENSOR_TYPES: tuple[PurpleAirSensorEntityDescription, ...] = (
         name="PM 10.0",
         icon="mdi:blur",
         device_class=SensorDeviceClass.PM10,
-        state_class=STATE_CLASS_MEASUREMENT,
+        state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
         unique_id_suffix="pm10",
     ),
@@ -82,7 +82,7 @@ SENSOR_TYPES: tuple[PurpleAirSensorEntityDescription, ...] = (
         name="Humidity",
         icon="mdi:water-percent",
         device_class=SensorDeviceClass.HUMIDITY,
-        state_class=STATE_CLASS_MEASUREMENT,
+        state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=PERCENTAGE,
         unique_id_suffix="humidity",
     ),
@@ -91,8 +91,8 @@ SENSOR_TYPES: tuple[PurpleAirSensorEntityDescription, ...] = (
         name="Temperature",
         icon="mdi:thermometer",
         device_class=SensorDeviceClass.TEMPERATURE,
-        state_class=STATE_CLASS_MEASUREMENT,
-        native_unit_of_measurement=TEMP_FAHRENHEIT,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfTemperature.FAHRENHEIT,
         unique_id_suffix="temp",
     ),
     PurpleAirSensorEntityDescription(
@@ -100,8 +100,8 @@ SENSOR_TYPES: tuple[PurpleAirSensorEntityDescription, ...] = (
         name="Pressure",
         icon="mdi:gauge",
         device_class=SensorDeviceClass.PRESSURE,
-        state_class=STATE_CLASS_MEASUREMENT,
-        native_unit_of_measurement=PRESSURE_HPA,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfPressure.HPA,
         unique_id_suffix="pressure",
     ),
 )

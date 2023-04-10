@@ -80,7 +80,7 @@ async def async_setup(hass: HomeAssistant, config: None) -> bool:
     expected_entries_v0 = len({e for e in entries if e.data.get("api_version") == 0})
     expected_entries_v1 = len({e for e in entries if e.data.get("api_version") == 1})
 
-    _LOGGER.info("Adding support for v1 PurpleAir sensors.")
+    _LOGGER.info("Adding support for v1 PurpleAir sensors")
 
     coordinator_v1 = PurpleAirDataUpdateCoordinator(
         PurpleAirApiV1,
