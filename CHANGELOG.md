@@ -1,6 +1,21 @@
 # Releases
 
-Current release: **3.1.1**
+Current release: **3.2.0**
+
+## 3.2.0
+
+Fix reported warning "using native unit of measurement 'AQI' which is
+not a valid unit for the device class ('aqi')".
+
+You will receive a new (mostly silent) warning log indicating the
+statistics for the sensors are no longer valid since it has switched
+from 'AQI' to None. This is an easy fix, you can go to the [developer
+tools/statistics][dev-stats] page and click the "Fix Me" link on the AQI
+sensors at the top of the list and select the option describing "Update
+the unit of the historic statistic values from 'AQI' to '', without
+converting.". This only needs to be done once per AQI sensor provided by
+this add-on. Alternatively you can select the "clear statistics" option
+to wipe historical data and start over.
 
 ## 3.1.1
 
