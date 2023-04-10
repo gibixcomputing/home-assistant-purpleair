@@ -30,7 +30,7 @@ WARNED_SENSORS: list[str] = []
 
 
 def add_aqi_calculations(
-    pa_sensors: PurpleAirApiSensorDataDict, *, cache: EpaAvgValueCache = None
+    pa_sensors: PurpleAirApiSensorDataDict, *, cache: EpaAvgValueCache | None = None
 ) -> None:
     """
     Add AQI calculations as custom properties to the readings.
@@ -164,7 +164,7 @@ def build_sensors(results: list[dict[str, Any]]) -> dict[str, PurpleAirApiSensor
         channel = "B" if "ParentID" in result else "A"
         channel_data = readings.get_channel(channel)
         for prop in JSON_PROPERTIES:
-            channel_data[prop] = result.get(prop)  # type: ignore
+            channel_data[prop] = result.get(prop)  # type: ignore[assignment]
 
     return sensors
 
@@ -242,7 +242,7 @@ def calculate_sensor_values(sensors: dict[str, PurpleAirApiSensorData]) -> None:
         readings.clear_temporary_data()
 
 
-def clear_sensor_warning(pa_sensor: PurpleAirApiSensorData):
+def clear_sensor_warning(pa_sensor: PurpleAirApiSensorData) -> None:
     """Remove a sensor from the warned sensor list."""
     if pa_sensor.pa_sensor_id in WARNED_SENSORS:
         WARNED_SENSORS.remove(pa_sensor.pa_sensor_id)
@@ -256,7 +256,7 @@ def create_epa_value_cache() -> EpaAvgValueCache:
 
 def get_pm_reading(
     pa_sensor: PurpleAirApiSensorData, prop: str, a_value: float, b_value: float
-):
+) -> tuple[float | None, str]:
     """Get a value and confidence level for the given PM reading."""
 
     a_valid = a_value < MAX_PM_READING
@@ -289,7 +289,9 @@ def get_pm_reading(
     return (value, confidence)
 
 
-def warn_sensor_channel_bad(pa_sensor: PurpleAirApiSensorData, prop: str, channel: str):
+def warn_sensor_channel_bad(
+    pa_sensor: PurpleAirApiSensorData, prop: str, channel: str
+) -> None:
     """
     Log a warning if a sensor is returning bad data for a collector channel.
 
@@ -310,7 +312,7 @@ def warn_sensor_channel_bad(pa_sensor: PurpleAirApiSensorData, prop: str, channe
 
 def _clean_expired_cache_entries(
     pa_sensor: PurpleAirApiSensorData, epa_avg: deque[EpaAvgValue]
-):
+) -> None:
     """Clean out any old cache entries older than an hour."""
     hour_ago = datetime.utcnow() - timedelta(seconds=3600)
     expired_count = sum(1 for v in epa_avg if v.timestamp < hour_ago)

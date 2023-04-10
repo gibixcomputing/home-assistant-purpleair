@@ -2,11 +2,11 @@
 from __future__ import annotations
 
 import logging
-from typing import Dict, Final
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
@@ -32,7 +32,7 @@ async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
     async_schedule_add_entities: AddEntitiesCallback,
-):
+) -> None:
     """Create custom air quality index sensors for Home Assistant."""
 
     config = PurpleAirConfigEntry(**config_entry.data)
@@ -64,7 +64,7 @@ def _add_legacy_sensors(
             config.pa_sensor_id,
         )
 
-        def callback():
+        def callback() -> None:
             pa_sensor: PurpleAirApiSensorData | None = coordinator.data.get(
                 config.pa_sensor_id
             )
@@ -100,13 +100,14 @@ def _add_legacy_sensors(
     return pa_sensors
 
 
-class PurpleAirSensor(CoordinatorEntity[Dict[str, PurpleAirApiSensorData]]):
+class PurpleAirSensor(
+    CoordinatorEntity[DataUpdateCoordinator[dict[str, PurpleAirApiSensorData]]]
+):
     """Provides the calculated Air Quality Index as a separate sensor for Home Assistant."""
 
-    _attr_attribution: Final = "Data provided by PurpleAir"
+    _attr_attribution = "Data provided by PurpleAir"
 
     config: PurpleAirConfigEntry
-    coordinator: DataUpdateCoordinator[dict[str, PurpleAirApiSensorData]]
     entity_description: PurpleAirSensorEntityDescription
     pa_sensor_id: str
 
@@ -132,11 +133,9 @@ class PurpleAirSensor(CoordinatorEntity[Dict[str, PurpleAirApiSensorData]]):
         self.entity_description = description
         self.pa_sensor_id = config.pa_sensor_id
 
-        self._attr_name: Final = f"{config.title} {description.name}"
-        self._attr_unique_id: Final = (
-            f"{config.pa_sensor_id}_{description.unique_id_suffix}"
-        )
-        self._attr_unit_of_measurement: Final = (  # temporary support for HA < 2021.9
+        self._attr_name = f"{config.title} {description.name}"
+        self._attr_unique_id = f"{config.pa_sensor_id}_{description.unique_id_suffix}"
+        self._attr_unit_of_measurement = (  # temporary support for HA < 2021.9
             getattr(description, "native_unit_of_measurement", None)
             or description.unit_of_measurement
         )
@@ -182,7 +181,7 @@ class PurpleAirSensor(CoordinatorEntity[Dict[str, PurpleAirApiSensorData]]):
         return True
 
     @property
-    def device_info(self) -> dict:
+    def device_info(self) -> DeviceInfo | None:
         """Get the device information this sensor is attached to."""
         return {
             "identifiers": {(DOMAIN, self.pa_sensor_id)},

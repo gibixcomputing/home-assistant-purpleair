@@ -6,11 +6,12 @@ from collections import defaultdict
 import logging
 from typing import TYPE_CHECKING, Any, Final, TypedDict, cast
 
+import voluptuous as vol
+
 from homeassistant.config_entries import CONN_CLASS_CLOUD_POLL, HANDLERS, ConfigFlow
 from homeassistant.const import CONF_API_KEY, CONF_ID
 from homeassistant.helpers import config_validation
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-import voluptuous as vol
 
 from .const import DOMAIN
 from .model import PurpleAirConfigEntry
@@ -19,7 +20,7 @@ from .purple_air_api.v1.util import get_api_sensor_config
 
 if TYPE_CHECKING:
     from aiohttp import ClientSession
-    from homeassistant.config_entries import ConfigEntry
+
     from homeassistant.data_entry_flow import FlowResult
 
 _LOGGER = logging.getLogger(__name__)
@@ -48,7 +49,7 @@ class PurpleAirConfigFlow(ConfigFlow):
     _session: ClientSession
 
     async def async_step_user(
-        self, user_input: UserInputSensorConfig = None
+        self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Handle setup user flow."""
 
@@ -60,7 +61,9 @@ class PurpleAirConfigFlow(ConfigFlow):
 
         errors: dict[str, str] = {}
         if user_input is not None:
-            (config, errors) = await self._get_sensor_config(user_input)
+            (config, errors) = await self._get_sensor_config(
+                cast(UserInputSensorConfig, user_input)
+            )
 
             if config and not errors:
                 await self.async_set_unique_id(config.get_uniqueid())
@@ -84,7 +87,7 @@ class PurpleAirConfigFlow(ConfigFlow):
         )
 
     async def async_step_add_sensor(
-        self, user_input: UserInputSensorConfig = None
+        self, user_input: UserInputSensorConfig | None = None
     ) -> FlowResult:
         """Handle adding another PA sensor with existing API key."""
 
@@ -144,7 +147,7 @@ class PurpleAirConfigFlow(ConfigFlow):
         return await self.async_step_legacy_migrate_without_api_key()
 
     async def async_step_legacy_migrate_auto(
-        self, user_input: dict[str, Any] = None
+        self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Automatically migrate the sensor if the user accepts."""
         if user_input is None:
@@ -309,10 +312,13 @@ class PurpleAirConfigFlow(ConfigFlow):
     ) -> FlowResult:
         """Update the existing config entry with the new config entry."""
 
-        existing_entry: ConfigEntry = await self.async_set_unique_id(new_config.get_uniqueid())  # type: ignore
+        existing_entry = await self.async_set_unique_id(new_config.get_uniqueid())
         # try the legacy (bad) format for entries, which was just a sensor id number.
         if not existing_entry:
-            existing_entry = await self.async_set_unique_id(new_config.pa_sensor_id)  # type: ignore
+            existing_entry = await self.async_set_unique_id(new_config.pa_sensor_id)
+
+            if not existing_entry:
+                return self.async_abort(reason="unique_id_failure")
 
         new_entry = new_config.asdict()
 
@@ -329,7 +335,7 @@ class PurpleAirConfigFlow(ConfigFlow):
         return self.async_abort(reason="legacy_migrate_success")
 
 
-def vol_data_dict(*args) -> dict[str, Any]:
+def vol_data_dict(*args: Any) -> dict[str, Any]:
     """Create a helpful data dictionary for voluptuous schemas.
 
     The underlying dictionary will return vol.UNDEFINED for any unset key. The

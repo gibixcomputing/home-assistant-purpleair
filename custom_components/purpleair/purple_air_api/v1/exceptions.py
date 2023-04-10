@@ -12,7 +12,7 @@ class PurpleAirApiConfigError(PurpleAirApiError):
       message -- An explanation of the error.
     """
 
-    def __init__(self, param: str, extra: str = None):
+    def __init__(self, param: str, extra: str | None = None) -> None:
         """Create an instance of the PurpleAirApiConfigError."""
 
         super().__init__(f"Invalid configuration parameter: {param} (extra: {extra})")
@@ -32,7 +32,7 @@ class PurpleAirServerApiError(PurpleAirApiError):
         The reason phrase given by the server, if one is available.
     """
 
-    def __init__(self, status: int, reason: str):
+    def __init__(self, status: int, reason: str) -> None:
         """Create a new PurpleAirServerApiError instance."""
         super().__init__(f"PurpleAir API returned HTTP {status} {reason}")
         self.status = status
@@ -53,7 +53,7 @@ class PurpleAirApiDataError(PurpleAirApiError):
         The attribute(s) the error may apply to, if available.
     """
 
-    def __init__(self, status: int, reason: str, description: str, error: str):
+    def __init__(self, status: int, reason: str, description: str, error: str) -> None:
         """Create a new PurpleAirApiDataError instance."""
         super().__init__(
             f"PurpleAir API returned HTTP {status} {reason}: {description} ({error})"

@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime
 import logging
-from typing import TYPE_CHECKING, Callable, Dict, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 from homeassistant.helpers import device_registry
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -16,6 +17,7 @@ from .purple_air_api.v1.model import NormalizedApiData
 
 if TYPE_CHECKING:
     from aiohttp import ClientSession
+
     from homeassistant.config_entries import ConfigEntry
 
     from .model import PurpleAirDomainData
@@ -29,27 +31,25 @@ class ApiProtocol(Protocol):
 
     def get_sensor_count(self) -> int:
         """Get registered sensor count from the API."""
-        ...
+        ...  # pylint: disable=unnecessary-ellipsis
 
     def register_sensor(
         self, pa_sensor_id: str, name: str, hidden: bool, read_key: str | None = None
     ) -> None:
         """Register a sensor with the API."""
-        ...
 
     def unregister_sensor(self, pa_sensor_id: str) -> None:
         """Unregister a sensor from the API."""
-        ...
 
     async def async_update(
         self, do_device_update: bool
     ) -> dict[str, NormalizedApiData]:
         """Update method for the Data Update Coordinator to call."""
-        ...
+        ...  # pylint: disable=unnecessary-ellipsis
 
 
 class PurpleAirDataUpdateCoordinator(
-    DataUpdateCoordinator[Dict[str, NormalizedApiData]]
+    DataUpdateCoordinator[dict[str, NormalizedApiData]]
 ):
     """Manage coordination between the API and DataUpdateCoordinator."""
 
@@ -57,8 +57,11 @@ class PurpleAirDataUpdateCoordinator(
     _last_device_refresh: datetime | None
 
     def __init__(
-        self, api_factory: Callable[[ClientSession, str], ApiProtocol], *args, **kwargs
-    ):
+        self,
+        api_factory: Callable[[ClientSession, str], ApiProtocol],
+        *args: Any,
+        **kwargs: Any,
+    ) -> None:
         """Create a new PurpleAirDataUpdateCoordinator.
 
         The "update_method" keyword argument will be ignored as this will call the
@@ -129,7 +132,7 @@ class PurpleAirDataUpdateCoordinator(
             self._last_device_refresh = datetime.utcnow()
 
             devices: dict[str, DeviceReading] = {}
-            for (pa_sensor_id, api_data) in data.items():
+            for pa_sensor_id, api_data in data.items():
                 if device_data := api_data["device"]:
                     devices[pa_sensor_id] = device_data
 
@@ -149,10 +152,10 @@ class PurpleAirDataUpdateCoordinator(
 
     @property
     def _domain_data(self) -> PurpleAirDomainData:
-        return self.hass.data[DOMAIN]
+        return self.hass.data[DOMAIN]  # type: ignore[no-any-return]
 
     async def _async_update_devices(self, devices: dict[str, DeviceReading]) -> None:
-        _LOGGER.info("device update! %s", devices)
+        _LOGGER.info("Device update! %s", devices)
 
         config_entries = self.hass.config_entries.async_entries(DOMAIN)
 
@@ -171,7 +174,7 @@ class PurpleAirDataUpdateCoordinator(
 
         registry = device_registry.async_get(self.hass)
 
-        for (pa_sensor_id, device_data) in devices.items():
+        for pa_sensor_id, device_data in devices.items():
             config_entry = find_entry(pa_sensor_id)
             if not config_entry:
                 _LOGGER.debug(

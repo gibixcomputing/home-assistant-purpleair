@@ -25,8 +25,12 @@ PLATFORMS = ["sensor"]
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
+async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Migrate configuration entry."""
+
+    # remove unused params
+    del hass
+
     _LOGGER.debug("Migrating from version %s", config_entry.version)
 
     # Version 2: use "node_id" as configuration key
@@ -76,7 +80,7 @@ async def async_setup(hass: HomeAssistant, config: None) -> bool:
     expected_entries_v0 = len({e for e in entries if e.data.get("api_version") == 0})
     expected_entries_v1 = len({e for e in entries if e.data.get("api_version") == 1})
 
-    _LOGGER.info("Adding support for v1 PurpleAir sensors.")
+    _LOGGER.info("Adding support for v1 PurpleAir sensors")
 
     coordinator_v1 = PurpleAirDataUpdateCoordinator(
         PurpleAirApiV1,
@@ -97,7 +101,7 @@ async def async_setup(hass: HomeAssistant, config: None) -> bool:
     return True
 
 
-async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
+async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Set up PurpleAir from a config entry."""
 
     config = PurpleAirConfigEntry(**config_entry.data)
@@ -143,7 +147,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     return False
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     unload_ok = all(
         await asyncio.gather(
@@ -157,7 +161,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     return unload_ok
 
 
-async def async_remove_entry(hass: HomeAssistant, config_entry: ConfigEntry):
+async def async_remove_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> None:
     """Unregisters the sensor from the API when the entry is removed."""
 
     config = PurpleAirConfigEntry(**config_entry.data)

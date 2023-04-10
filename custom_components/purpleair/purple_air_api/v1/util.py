@@ -157,7 +157,7 @@ async def get_api_sensor_config(
     session: ClientSession,
     api_key: str,
     pa_sensor_id: str,
-    pa_sensor_read_key: str = None,
+    pa_sensor_read_key: str | None = None,
 ) -> ApiConfigEntry:
     """
     Get a new configuration for the sensor with the provided information.
@@ -280,10 +280,12 @@ async def _get_sensor_data_from_api(resp: ClientResponse) -> dict:
             )
             raise PurpleAirApiConfigError("bad_request", data.get("description"))
 
-    return data.get("sensor")
+    return data.get("sensor")  # type: ignore[no-any-return]
 
 
-def _clean_expired_cache_entries(pa_sensor: SensorReading, epa_avg: deque[EpaAvgValue]):
+def _clean_expired_cache_entries(
+    pa_sensor: SensorReading, epa_avg: deque[EpaAvgValue]
+) -> None:
     """Clean out any old cache entries older than an hour."""
     hour_ago = datetime.utcnow() - timedelta(seconds=3600)
     expired_count = sum(1 for v in epa_avg if v.timestamp < hour_ago)

@@ -4,8 +4,10 @@ This custom component leverages the PurpleAir API to pull in air quality
 reports from sensors in your area. **You will need to register for a
 free API key!**
 
-The next version of this component will require a newer version of
-Home Assistant (TBD).
+This release has been tested on **2023.3.0**. There is no guarantee of
+backwards compatibility. The next major version of this component will
+require a newer version of Home Assistant. I generally require the
+previous month's `.0` version when I work on this component.
 
 {% if not installed %}
 
@@ -21,11 +23,36 @@ key.
 
 {% endif %}
 
-{% set ver = version_installed.replace("v", "").replace(".","") | int %}
+{% set inst_ver = version_installed.replace("v", "").replace(".","") | int %}
+{% set next_ver = version_available.replace("v", "").replace(".","") | int %}
 
 ## What's New
 
-{% if ver < 311 %}
+{% if inst_ver < 320 %}{# > #}
+### 3.2.0
+
+Fix reported warning "using native unit of measurement 'AQI' which is
+not a valid unit for the device class ('aqi')".
+
+{% endif %}
+
+{% if inst_ver < 320 and next_ver >= 320 %}{# > #}
+#### IMPORTANT
+
+You will receive a new (mostly silent) warning log indicating the
+statistics for the sensors are no longer valid since it has switched
+from 'AQI' to None. This is an easy fix, you can go to the [developer
+tools/statistics][dev-stats] page and click the "Fix Me" link on the AQI
+sensors at the top of the list and select the option describing "Update
+the unit of the historic statistic values from 'AQI' to '', without
+converting.". This only needs to be done once per AQI sensor provided by
+this add-on. Alternatively you can select the "clear statistics" option
+to wipe historical data and start over.
+
+{% endif %}
+
+{% if inst_ver < 311 %}{# > #}
+### 3.1.1
 
 Fixes an issue when adding sensors.
 
@@ -35,7 +62,7 @@ README updates contributed by Erick Hitter (@ethitter). Thanks Erick!
 
 {% endif %}
 
-{% if ver < 310 %}
+{% if inst_ver < 310 %}{# > #}
 ### 3.1.0
 
 Update EPA correction algorithm to 2021 data with a revised normal

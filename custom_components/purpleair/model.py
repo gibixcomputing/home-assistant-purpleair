@@ -87,7 +87,6 @@ class PurpleAirDomainData:
 class PurpleAirSensorEntityDescription(SensorEntityDescription):
     """Class describing PurpleAir sensor entities."""
 
-    device_class: str = ""
     enable_default: bool = False
     primary: bool = False
     unique_id_suffix: str = ""

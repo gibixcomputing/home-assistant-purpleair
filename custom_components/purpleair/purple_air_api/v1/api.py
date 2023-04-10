@@ -45,7 +45,7 @@ class PurpleAirApiV1:
     _last_device_refresh: datetime | None
     _warn_missing_fields: bool
 
-    def __init__(self, session: ClientSession, api_key: str):
+    def __init__(self, session: ClientSession, api_key: str) -> None:
         """Create a new instance of the PurpleAirApiV1 API."""
 
         self.api_key = api_key
@@ -61,7 +61,7 @@ class PurpleAirApiV1:
 
         _LOGGER.debug("Created v1 API instance for API key: %s", self.api_key)
 
-    def get_sensor_count(self):
+    def get_sensor_count(self) -> int:
         """Get the number of sensors registered with this instance."""
         return len(self.sensors)
 
