@@ -1,6 +1,11 @@
 # Releases
 
-Current release: **3.2.0**
+Current release: **3.2.1**
+
+## 3.2.1
+
+Fix an error when creating the PurpleAir device entity in Home Assistant
+2023.8. The old way worked but now throws an error.
 
 ## 3.2.0
 

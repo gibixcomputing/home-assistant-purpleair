@@ -28,6 +28,13 @@ key.
 
 ## What's New
 
+{% if inst_ver < 321 %}{# > #}
+### 3.2.1
+
+Quick fix to clear up problems during device creation/update in Home
+Assistant 2023.8.
+
+
 {% if inst_ver < 320 %}{# > #}
 ### 3.2.0
 

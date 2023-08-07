@@ -21,7 +21,7 @@ yamllint==1.28.0
 
 # Match HA test requirements.
 astroid==2.14.1
-codecov==2.1.12
+codecov==2.1.13
 coverage==7.1.0
 freezegun==1.2.2
 mock-open==1.4.0

@@ -188,20 +188,15 @@ class PurpleAirDataUpdateCoordinator(
                 config_entry.entry_id,
             )
 
-            device = registry.async_get_or_create(
+            # async_get_or_create will also update the device all
+            # in one call, so we don't need the device itself
+            registry.async_get_or_create(
                 config_entry_id=config_entry.entry_id,
                 identifiers={(DOMAIN, pa_sensor_id)},
-                default_name=config_entry.title,
-                default_manufacturer="PurpleAir",
-                default_model="unknown",
+                name=config_entry.title,
+                model=f"{device_data.model} {device_data.hardware}",
+                sw_version=device_data.firmware_version,
+                manufacturer="PurpleAir",
             )
 
-            if device:
-                registry.async_update_device(
-                    device.id,
-                    manufacturer="PurpleAir",
-                    model=f"{device_data.model} {device_data.hardware}",
-                    sw_version=device_data.firmware_version,
-                )
-
-                _LOGGER.debug("updated device for pa_sensor_id: %s", pa_sensor_id)
+            _LOGGER.debug("updated device for pa_sensor_id: %s", pa_sensor_id)

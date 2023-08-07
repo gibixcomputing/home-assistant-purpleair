@@ -82,9 +82,8 @@ class PASensorBase(
         self._attr_unique_id = f"{self.pa_sensor_id}_{self.entity_description.key}"
         self._attr_device_info = {
             "identifiers": {(DOMAIN, self.pa_sensor_id)},
-            "default_name": self.pa_sensor_name,
-            "default_manufacturer": "PurpleAir",
-            "default_model": "unknown",
+            "name": self.pa_sensor_name,
+            "manufacturer": "PurpleAir",
         }
 
         self._sensor_attr_name = entity_description.attr_name
