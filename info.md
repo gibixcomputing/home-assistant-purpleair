@@ -4,7 +4,7 @@ This custom component leverages the PurpleAir API to pull in air quality
 reports from sensors in your area. **You will need to register for a
 free API key!**
 
-This release has been tested on **2023.3.0**. There is no guarantee of
+This release has been tested on **2024.12.5**. There is no guarantee of
 backwards compatibility. The next major version of this component will
 require a newer version of Home Assistant. I generally require the
 previous month's `.0` version when I work on this component.
@@ -28,12 +28,20 @@ key.
 
 ## What's New
 
+{% if inst_ver < 322 %}{# > #}
+### 3.2.2
+
+Quick fix to address deprecations in HA 2025.1.
+
+{% endif %}
+
 {% if inst_ver < 321 %}{# > #}
 ### 3.2.1
 
 Quick fix to clear up problems during device creation/update in Home
 Assistant 2023.8.
 
+{% endif %}
 
 {% if inst_ver < 320 %}{# > #}
 ### 3.2.0

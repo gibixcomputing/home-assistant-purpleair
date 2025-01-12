@@ -1,6 +1,10 @@
 # Releases
 
-Current release: **3.2.1**
+Current release: **3.2.2**
+
+## 3.2.2
+
+Fix for HA 2025.1 deprecation of `async_forward_entry_setup`.
 
 ## 3.2.1
 

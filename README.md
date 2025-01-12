@@ -5,8 +5,8 @@ network. Available sensor information, such as Particulate Matter 2.5
 as sensors connected to the PurpleAir sensor.
 
 
-# Minimum Required Home Assistant Version: **2023.3.0**
-This release has been tested on **2023.3.0**. There is no guarantee of
+# Minimum Required Home Assistant Version: **2024.7.0**
+This release has been tested on **2024.7.0**. There is no guarantee of
 backwards compatibility. The next minor version of this component will
 require a newer version of Home Assistant. I generally require the
 previous month's `.0` version when I work on this component.

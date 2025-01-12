@@ -7,6 +7,7 @@ import logging
 from types import MappingProxyType
 
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -20,7 +21,7 @@ from .purple_air_api.v1.api import PurpleAirApiV1
 
 PARALLEL_UPDATES = 1
 
-PLATFORMS = ["sensor"]
+PLATFORMS = [Platform.SENSOR]
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -123,10 +124,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         domain_data.api = api_v0
         domain_data.coordinator = coordinator_v0
 
-    for component in PLATFORMS:
-        hass.async_create_task(
-            hass.config_entries.async_forward_entry_setup(config_entry, component)
-        )
+    await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
 
     # remove air_quality entities from the registry if they exist
     ent_reg = entity_registry.async_get(hass)
